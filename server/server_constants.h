@@ -44,6 +44,13 @@ typedef enum {
     PARSER_STATES_COUNT
 } parser_states;
 
+typedef enum {
+    UNDEFINED,
+    VALID_COMMAND,
+    INVALID_COMMAND
+} parser_event_types;
+
+
 struct users {
     char name[USERNAME_SIZE];
     char pass[USERNAME_SIZE];
@@ -59,9 +66,18 @@ typedef struct connection_data {
     struct users *user;
     struct args *args;
 
+    char current_command[COMMAND_LENGTH + 1];
+    char argument[ARGUMENT_LENGTH + 1];
+    size_t command_length;
+    size_t argument_length;
+    bool is_finished;
+    bool command_error;
+
     struct parser * parser;
     struct state_machine stm;
     stm_states last_state;
+
+    struct session current_session;
 
 } connection_data;
 

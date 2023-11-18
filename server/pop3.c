@@ -110,9 +110,15 @@ connection_data* pop3_init(void* data) {
     buffer_init(&conn->read_buff_object, BUFFER_SIZE, (uint8_t *) conn->read_buff);
     buffer_init(&conn->write_buff_object, BUFFER_SIZE, (uint8_t *) conn->write_buff);
     conn->parser = parser_init(parser_no_classes(), &parser_definition);
+    conn->user = NULL;
     conn->stm.states = stm_states_table;
     conn->stm.initial = AUTHORIZATION;
     conn->stm.max_state = STM_STATES_COUNT;
+
+    conn->current_command[0] = '\0';
+    conn->is_finished = false;
+    conn->command_error = false;
+
     stm_init(&conn->stm);
 
     conn->last_state = -1;
@@ -141,7 +147,7 @@ void pop3_destroy(struct connection_data* connection){
 
 void accept_pop_connection(struct selector_key* key) {
     connection_data *conn = NULL;
-    
+
     // Se crea la estructura del socket activo para la conexion entrante
     struct sockaddr_storage address;
     socklen_t address_len = sizeof(address);

@@ -1,73 +1,157 @@
-#include "../../lib/include/stm.h"
-#include "../../lib/include/selector.h"
+#include "../server_constants.h"
+#include "../../lib/buffer.h"
+#include "../../logger/logger.h"
+#include "../../lib/selector.h"
+#include "../../lib/parser.h"
+#include "../args/args.h"
+#include <sys/types.h>
+#include <sys/dir.h>
 
-static struct command commands[]={
+typedef enum try_state {
+    TRY_DONE,
+    TRY_PENDING
+} try_state;
+
+try_state try_write(const char* str, buffer* buff){
+    size_t max = 0;
+    uint8_t * ptr = buffer_write_ptr(buff,&max);
+    size_t message_len = strlen(str);
+    if(max<message_len){
+        //vuelvo a intentar despues
+        return TRY_PENDING;
+    }
+    //Manda el mensaje parcialmente si no hay espacio
+    memcpy(ptr, str, message_len); //eliminar warnings y es mas claro en lo que hacemos (no queremos el \0)
+//    strncpy((char*)ptr, str, message_len);
+    buffer_write_adv(buff,(ssize_t)message_len);
+    return TRY_DONE;
+}
+
+stm_states user_handler(struct selector_key * key, connection_data* conn) {
+    log(LOG_DEBUG, "FD %d: USER command");
+
+    struct users* users = conn->args->users;
+    size_t users_count = conn->args->users_count;
+
+     for (size_t i = 0; i < users_count; i++) {
+        // Si el usuario existe, seteamos el maildir y el username en la sesion actual.
+        if (strcmp(users[i].name, conn->argument) == 0) {
+            char base_directory[PATH_SIZE];
+            strcpy(base_directory, conn->args->mail_directory);
+
+            conn->current_session.maildir[0] = '\0';
+            strcat(conn->current_session.maildir, base_directory);
+            strcat(conn->current_session.maildir, "/");
+            strcat(conn->current_session.maildir, conn->argument);
+            strcat(conn->current_session.maildir, "/cur");
+
+            DIR * directory = opendir(conn->current_session.maildir);
+            if (directory == NULL) {
+                conn->command_error = true;
+                conn->current_session.maildir[0] = '\0';
+
+                char* msj = "-ERR invalid user\r\n";
+                try_write(msj,&(conn->write_buff_object));
+
+                return AUTHORIZATION;
+            }
+            closedir(directory);
+
+            char* msj = "+OK valid user\r\n";
+            try_write(msj,&(conn->write_buff_object));
+
+            strcpy(conn->current_session.username, conn->argument);
+            conn->command_error = false;
+            return AUTHORIZATION;
+        }
+    }
+
+    char* msj = "-ERR invalid user\r\n";
+    try_write(msj,&(conn->write_buff_object));
+
+    // Si el usuario no existe, seteamos el error en true.
+    conn->command_error = true;
+    return AUTHORIZATION;
+}
+
+
+stm_states pass_handler(struct selector_key * key, connection_data * conn) {
+    log(LOG_DEBUG, "FD %d: USER command");
+
+    struct users* users = conn->args->users;
+    size_t users_count = conn->args->users_count;
+
+     for (size_t i = 0; i < users_count; i++) {
+        // Si el usuario existe, seteamos el maildir y el username en la sesion actual.
+        if (strcmp(users[i].name, conn->argument) == 0) {
+            char base_directory[PATH_SIZE];
+            strcpy(base_directory, conn->args->mail_directory);
+
+            conn->current_session.maildir[0] = '\0';
+            strcat(conn->current_session.maildir, base_directory);
+            strcat(conn->current_session.maildir, "/");
+            strcat(conn->current_session.maildir, conn->argument);
+            strcat(conn->current_session.maildir, "/cur");
+
+            DIR * directory = opendir(conn->current_session.maildir);
+            if (directory == NULL) {
+                conn->command_error = true;
+                conn->current_session.maildir[0] = '\0';
+                return AUTHORIZATION;
+            }
+            closedir(directory);
+
+            strcpy(conn->current_session.username, conn->argument);
+            conn->command_error = false;
+            return AUTHORIZATION;
+        }
+    }
+
+    // Si el usuario no existe, seteamos el error en true.
+    conn->command_error = true;
+    return AUTHORIZATION;
+}
+
+
+
+
+
+
+typedef enum command_args {
+    REQUIRED,
+    OPTIONAL,
+    EMPTY
+} command_args;
+
+
+static struct command {
+    const char * name;
+    command_args arguments;
+    stm_states (*handler)(struct selector_key *, struct connection_data *);
+};
+
+static struct command commands[] = {
         {
             .name = "USER",
-            .argument_type = have_argument,
-            .action = user_action
+            .arguments = REQUIRED,
+            .handler = user_handler
         },
         {
             .name = "PASS",
-            .argument_type = have_argument,
-            .action = pass_action
+            .arguments = REQUIRED,
+            .handler = pass_handler
         },
-        {
-            .name = "STAT",
-            .argument_type = not_argument,
-            .action = stat_action
-        },
-        {
-            .name = "LIST",
-            .argument_type = might_argument,
-            .action = list_action
-        },
-        {
-            .name = "RETR",
-            .argument_type = have_argument,
-            .action = retr_action
-        },
-        {
-            .name = "DELE",
-            .argument_type = have_argument,
-            .action = dele_action
-        },
-        {
-            .name = "NOOP",
-            .argument_type = not_argument,
-            .action = noop_action
-        },{
-            .name = "RSET",
-            .argument_type = not_argument,
-            .action = rset_action
-        },
-        {
-            .name = "QUIT",
-            .argument_type = not_argument,
-            .action = quit_action
-        },
-        {
-            .name = "CAPA",
-            .argument_type = not_argument,
-            .action = capa_action,
-        },
-        {
-            .name = "Error command", //no deberia llegar aca para buscar al comando
-            .argument_type = might_argument,
-            .action = default_action
-        }
 };
-
 
 void server_ready(struct connection_data * conn){
     char * msj = "+OK POP3 server ready\r\n";
 
     size_t n;
-    char * ptr = (char *) buffer_write_ptr(&conn->out_buffer_object, &n);
+    char * ptr = (char *) buffer_write_ptr(&conn->write_buff_object, &n);
     if (n >= strlen(msj)) {
-        connection->current_command.finished = true;
+        conn->is_finished = true;
         strncpy(ptr, msj, strlen(msj));
-        buffer_write_adv(&connection->out_buffer_object, (ssize_t) strlen(msj));
+        buffer_write_adv(&conn->write_buff_object, (ssize_t) strlen(msj));
         return true;
     }
     return false;
@@ -76,81 +160,95 @@ void server_ready(struct connection_data * conn){
 stm_states stm_server_read(struct selector_key *key){
     connection_data * connection = (connection_data *) key->data;
 
-    if(!buffer_can_read[&connection->in_buffer_object]){
+/*
+    if(!buffer_can_read[&connection->read_buff_object]){
         
     }
+*/
+
 }
 
 stm_states read_command(struct selector_key * key, stm_states current_state) {
-    connection_data * connection = (connection_data *) key->data;
-    
-    //Guardamos lo que leemos del socket en el buffer de entrada
-    size_t max = 0;
-    uint8_t* ptr = buffer_write_ptr(&(state->info_read_buff), &max);
-    ssize_t read_count = recv(key->s, ptr, max, 0);
+    struct connection_data* connection = (struct connection_data*) key->data;
+    char * ptr;
 
-    if(read_count<=0){
-        log(LOG_ERROR,"Error reading at socket");
-        return FINISHED;
+    if (!buffer_can_read(&connection->read_buff_object)) {
+        size_t write_bytes;
+        ptr = (char *) buffer_write_ptr(&connection->read_buff_object, &write_bytes);
+        ssize_t n = recv(key->fd, ptr, write_bytes, 0);
+        if (n == 0) {
+            return QUIT;
+        }
+        buffer_write_adv(&connection->read_buff_object, n);
     }
-    //Avanzamos la escritura en el buffer
-    buffer_write_adv(&(state->info_read_buff), read_count);
 
-    //Obtenemos un puntero para lectura
-    ptr = buffer_read_ptr(&(state->info_read_buff),&max);
-    
-    for(size_t i = 0; i<max; i++){
-        parser_state parser = parser_feed(state->pop3_parser, ptr[i]);
-        if(parser == PARSER_FINISHED || parser == PARSER_ERROR){
-            //avanzamos solo hasta el fin del comando
-            buffer_read_adv(&(state->info_read_buff),i+1);
-            
-            // Copia el comando al state.cmd
-            get_pop3_cmd(state->pop3_parser,state->cmd,MAX_CMD);
-            pop3_command command = get_command(state->cmd);
-            logf(LOG_DEBUG,"Reading request for cmd: '%s'", command>=0 ? commands[command].name : "invalid command");
-            connection->command = command;
-            get_pop3_arg(state->pop3_parser,state->arg,MAX_ARG);
-            if(parser == PARSER_ERROR || command == ERROR_COMMAND){
-                log(LOG_ERROR, "Unknown command");
-                state->command = ERROR_COMMAND;
-            }
-            if(!commands[command].check(state->arg)){
-                log(LOG_ERROR, "Bad arguments");
-                state->command = ERROR_COMMAND;
-            }
+    size_t read_bytes;
+    ptr = (char *) buffer_read_ptr(&connection->read_buff_object, &read_bytes);
 
-            if(!check_command_for_protocol_state(state->pop3_protocol_state, command)){
-                logf(LOG_ERROR,"Command '%s' not allowed in this state",commands[command].name);
-                state->command = ERROR_COMMAND;
+    for (size_t i = 0; i < read_bytes; i++) {
+        const struct parser_event * event = parser_feed(connection->parser, ptr[i]);
+        buffer_read_adv(&connection->read_buff_object, 1);
+
+        /* event-type es modificado en pop3_parser. 
+            Una vez que se termina de parsear el comando, se setea el tipo de evento en VALID_COMMAND o INVALID_COMMAND.
+        */
+        if (event->type == VALID_COMMAND) {
+            for (size_t j = 0; j < COMMAND_LENGTH; j++) {
+                struct command maybe_command = commands[j];
+                if (strcasecmp(maybe_command.name, connection->current_command) == 0) {
+                    if ((maybe_command.arguments == REQUIRED && connection->argument_length > 0) ||
+                        (maybe_command.arguments == EMPTY && connection->argument_length == 0) ||
+                        (maybe_command.arguments == OPTIONAL)) {
+                        stm_states next_state = maybe_command.handler(key, connection);
+                     
+                     
+                     //   selector_set_interest_key(key, OP_WRITE);
+                     
+                        return next_state;
+                    } else {
+                        log_debug("FD %d: Error. Invalid argument", key->fd);
+                        return ERROR;
+                    }
+                }
             }
-            parser_reset(state->pop3_parser);
-            //Vamos a procesar la respuesta
-            if(selector_set_interest(key->s,key->fd,OP_WRITE) != SELECTOR_SUCCESS){
-                log(LOG_ERROR, "Error setting interest to OP_WRITE after reading request");
-                return FINISHED;
+            log_debug("FD %d: Error. Invalid command for state", key->fd);
+            return ERROR;
+        } else if (event->type == INVALID_COMMAND) {
+            log_debug("FD %d: Error. Invalid command", key->fd);
+            bool saw_carriage_return = ptr[i] == '\r';
+            while (i < read_bytes) {
+                char c = (char) buffer_read(&connection->read_buff_object);
+                if (c == '\r') {
+                    saw_carriage_return = true;
+                } else if (c == '\n') {
+                    if (saw_carriage_return) {
+                        return ERROR;
+                    }
+                } else {
+                    saw_carriage_return = false;
+                }
+                i++;
             }
-            return WRITING_RESPONSE; //vamos a escribir la respuesta
+            return ERROR;
         }
     }
-    //Avanzamos en el buffer, leimos lo que tenia
-    buffer_read_adv(&(state->info_read_buff), (ssize_t) max);
-    return READING_REQUEST; //vamos a seguir leyendo el request
+
+    return current_state;
 }
 
 stm_states write_command(struct selector_key * key, stm_states current_state) {
-    connection_data connection = (connection_data) key->data;
+    connection_data* connection = (connection_data*) key->data;
     char * ptr;
 
-    if (buffer_can_write(&connection->out_buffer_object)) {
+    if (buffer_can_write(&connection->write_buff_object)) {
         size_t write_bytes;
-        ptr = (char *) buffer_write_ptr(&connection->out_buffer_object, &write_bytes);
-        for (size_t j = 0; j < pop3_commands_length[current_state]; j++) {
-            struct pop3_command maybe_command = pop3_commands[current_state][j];
-            if (strcasecmp(maybe_command.command, connection->current_command.command) == 0) {
+        ptr = (char *) buffer_write_ptr(&connection->write_buff_object, &write_bytes);
+        for (size_t j = 0; j < COMMAND_LENGTH; j++) {
+            struct command maybe_command = commands[j];
+            if (strcasecmp(maybe_command.name, connection->current_command) == 0) {
                 stm_states next_state = maybe_command.writer(key, connection, ptr, &write_bytes);
-                buffer_write_adv(&connection->out_buffer_object, (ssize_t) write_bytes);
-                if (connection->current_command.finished) {
+                buffer_write_adv(&connection->write_buff_object, (ssize_t) write_bytes);
+                if (connection->is_finished) {
                     clear_parser_buffers(&connection->current_command);
                 }
                 return next_state;
@@ -162,12 +260,13 @@ stm_states write_command(struct selector_key * key, stm_states current_state) {
 }
 
 void stm_authorization_arrival(stm_states state, struct selector_key * key) {
-
-
+    connection_data* connection = (connection_data*) key->data;
+    connection->last_state = AUTHORIZATION;
 }
 
 void stm_authorization_departure(stm_states state, struct selector_key * key) {
-
+    connection_data* connection = (connection_data*) key->data;
+    connection->last_state = AUTHORIZATION;
 }
 
 stm_states stm_authorization_read(struct selector_key * key) {
@@ -175,7 +274,7 @@ stm_states stm_authorization_read(struct selector_key * key) {
 }
 
 stm_states stm_authorization_write(struct selector_key * key){
-    connection_data connection = (connection_data) key->data;
+    connection_data* connection = (connection_data* ) key->data;
 
     // Si es la primera vez que estamos en el estado AUTHORIZATION,
     // mandamos el mensaje de bienvenida.

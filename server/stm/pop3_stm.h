@@ -7,11 +7,6 @@ typedef enum {
     REQUIRED
 } argument_type;
 
-struct pop3_command {
-    char * name;
-    argument_type argument_type;
-    stm_states (* handler)(struct selector_key * key, connection_data data);
-};
 
 typedef enum stm_state {
     AUTHENTICATION,
