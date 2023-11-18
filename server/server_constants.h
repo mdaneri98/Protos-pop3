@@ -3,6 +3,8 @@
 
 #include "stdlib.h"
 #include <stdbool.h>
+#include "../lib/buffer.h"
+#include "../lib/stm.h"
 // #include "../constants.h"
 // #include "../lib/include/stm.h"
 
@@ -28,8 +30,8 @@
 
 #define CLIENT_TOKEN_LENGTH 6
 
-
-typedef enum {
+typedef enum
+{
     AUTHORIZATION = 0,
     TRANSACTION,
     ERROR,
@@ -37,27 +39,30 @@ typedef enum {
     STM_STATES_COUNT
 } stm_states;
 
-typedef enum {
+typedef enum
+{
     COMMAND = 0,
     ARGUMENT,
     END,
     PARSER_STATES_COUNT
 } parser_states;
 
-typedef enum {
+typedef enum
+{
     UNDEFINED,
     VALID_COMMAND,
     INVALID_COMMAND
 } parser_event_types;
 
-
-struct users {
+struct users
+{
     char name[USERNAME_SIZE];
     char pass[USERNAME_SIZE];
     bool logged_in;
 };
 
-typedef struct connection_data {
+typedef struct connection_data
+{
     int connection_fd;
     uint8_t read_buff[BUFFER_SIZE];
     uint8_t write_buff[BUFFER_SIZE];
@@ -73,7 +78,7 @@ typedef struct connection_data {
     bool is_finished;
     bool command_error;
 
-    struct parser * parser;
+    struct parser *parser;
     struct state_machine stm;
     stm_states last_state;
 
@@ -104,7 +109,5 @@ struct session
     size_t maildir_size;
     bool requested_quit;
 };
-
-
 
 #endif
