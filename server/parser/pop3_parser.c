@@ -1,59 +1,75 @@
 #include "pop3_parser.h"
 // Actions
 
-parser_state parser_command_state_any(void *data, uint8_t c)
+void parser_command_state_any(struct parser_event *ret, uint8_t c, void *data)
 {
-    parser_cmd_data *cmd_data = (parser_cmd_data *)data;
-    if (cmd_data->cmd_length < CMD_LENGTH)
+    connection_data d = (connection_data)data;
+    if (d->current_command.command_length < MIN_COMMAND_LENGTH)
     {
-        cmd_data->cmd_length += 1;
-        cmd_data->cmd[cmd_length] = c;
-        return READING;
+        ret->type = UNDEFINED;
+        d->current_command.command[d->current_command.command_length] = (char)c;
+        d->current_command.command_length += 1;
+        return;
     }
-    return ERROR;
+    ret->type = INVALID_COMMAND;
 }
 
-parser_state parser_command_state_carriage_return(void *data, uint8_t c)
+void parser_command_state_carriage_return(struct parser_event *ret, uint8_t c, void *data)
 {
-    return READING;
-}
-
-parser_state parser_command_state_space(void *data, uint8_t c)
-{
-    parser_cmd_data *cmd_data = (parser_cmd_data *)data;
-    // If command is not 4 letters or already read arg.
-    if (cmd_data->cmd_length != CMD_LENGTH || cmd_data->arg_length != 0)
+    connection_data d = (connection_data)data;
+    if (d->current_command.command_length < MIN_COMMAND_LENGTH)
     {
-        return ERROR;
+        ret->type = INVALID_COMMAND;
+        return;
     }
-    return READING;
+    d->current_command.command[d->current_command.command_length] = '\0' ret->type = UNDEFINED;
 }
 
-parser_state parser_argument_state_any(void *data, uint8_t c)
+void parser_command_state_space(void *data, uint8_t c)
 {
-    parser_cmd_data *cmd_data = (parser_cmd_data *)data;
-    if (cmd_data->arg_length < ARG_MAX_LENGTH)
+    connection_data d = (connection_data)data;
+    if (d->current_command.command_length < MIN_COMMAND_LENGTH)
     {
-        cmd_data->arg_length += 1;
-        cmd_data->arg[arg_length] = c;
-        return READING;
+        ret->type = INVALID_COMMAND;
+        return;
     }
-    return ERROR;
+    d->current_command.command[d->current_command.command_length] = '\0';
+    ret->type = UNDEFINED;
 }
 
-parser_state parser_argument_state_carriage_return(void *data, uint8_t c)
+void parser_argument_state_any(struct parser_event *ret, uint8_t c, void *data)
 {
-    return READING;
+    connection_data d = (connection_data)data;
+    if (d->current_command.argument_length < ARGUMENT_LENGTH)
+    {
+        ret->type = UNDEFINED;
+        d->current_command.argument[d->current_command.argument_length] = (char)c;
+        d->current_command.argument_length += 1;
+        return;
+    }
+    ret->type = INVALID_COMMAND;
 }
 
-parser_state parser_end_state_line_feed(void *data, uint8_t c)
+void parser_argument_state_carriage_return(struct parser_event *ret, uint8_t c, void *data)
 {
-    return FINISHED;
+    connection_data d = (connection_data)data;
+    if (d->current_command.argument_length > 0)
+    {
+        ret->type = UNDEFINED;
+        d->current_command.argument[d->current_command.argument_length] = '\0';
+        d->current_command.argument_length += 1;
+    }
+    ret->type = INVALID_COMMAND;
 }
 
-parser_state parser_end_state_any(void *data, uint8_t c)
+void parser_end_state_line_feed(struct parser_event *ret, uint8_t c, void *data)
 {
-    return ERROR;
+    ret->type = VALID_COMMAND;
+}
+
+void parser_end_state_any(struct parser_event *ret, uint8_t c, void *data)
+{
+    ret->type = INVALID_COMMAND;
 }
 
 void get_parsed_cmd(void *data, char *buff, int max)
