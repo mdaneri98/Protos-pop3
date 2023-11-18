@@ -6,7 +6,6 @@
 #include <getopt.h>
 
 #include "args.h"
-#include "../server_constants.h"
 
 
 
@@ -73,6 +72,7 @@ void parse_args(const int argc, char **argv, struct args * args) {
 
     args->server_port = SERVER_PORT;
     args->client_port = CLIENT_PORT;
+    strcpy(args->mail_directory, "/tmp/mail");
     args->max_mails = INITIAL_MAILS_QTY;
 
     int c;

@@ -4,12 +4,6 @@
 
 #include "../server_constants.h"
 
-struct users {
-    char name[USERNAME_SIZE];
-    char pass[USERNAME_SIZE];
-    bool logged_in;
-};
-
 struct args {
     unsigned short server_port;
     unsigned short client_port;
