@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS=-g -Wall -Wextra -pedantic -pedantic-errors -pthread -std=c11 -O3 -D_POSIX_C_SOURCE=200112L -D__BSD_VISIBLE=1 -Wno-unused-parameter -Wno-implicit-fallthrough -Wno-stringop-truncation -fsanitize=address
+CFLAGS= -std=c11 -pedantic -pedantic-errors -g -Wall -Werror -Wextra -Wno-unused-parameter -Wno-newline-eof -Wno-implicit-fallthrough -D_POSIX_C_SOURCE=200112L -fsanitize=address
 LIB_DIR = lib
 SERVER_DIR = server
 CLIENT_DIR = client
