@@ -168,7 +168,7 @@ int main(const int argc, char **argv)
     }
 
     log(LOG_DEBUG, "Binding IPv6 socket");
-    if (bind(server_6, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+    if (bind(server_6, (struct sockaddr *)&addr_6, sizeof(addr_6)) < 0)
     {
         err_msg = "unable to bind socket";
         goto finally;
