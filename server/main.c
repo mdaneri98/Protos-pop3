@@ -113,6 +113,11 @@ int main(const int argc, char **argv)
 
     // Argumentos y valores default
     args = malloc(sizeof(struct args));
+    if (args == NULL)
+    {
+        log(LOG_DEBUG, "Unable to allocate memory for args\n");
+        return 1;
+    }
 
     parse_args(argc, argv, args);
 
@@ -183,7 +188,7 @@ int main(const int argc, char **argv)
     }
 
     log(LOG_DEBUG, "Listening IPv6 socket");
-    if (listen(server, MAX_PENDING_CONNECTIONS) < 0)
+    if (listen(server_6, MAX_PENDING_CONNECTIONS) < 0)
     {
         err_msg = "unable to listen";
         goto finally;
