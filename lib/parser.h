@@ -38,9 +38,9 @@ struct parser_state_transition
     /** descriptor del estado destino cuando se cumple la condición */
     unsigned dest;
     /** acción 1 que se ejecuta cuando la condición es verdadera. requerida. */
-    void (*act1)(struct parser_event *ret, const uint8_t c);
+    void (*act1)(struct parser_event *ret, const uint8_t c, void* data);
     /** otra acción opcional */
-    void (*act2)(struct parser_event *ret, const uint8_t c);
+    void (*act2)(struct parser_event *ret, const uint8_t c, void* data);
 };
 
 /** predicado para utilizar en `when' que retorna siempre true */
@@ -79,9 +79,10 @@ void parser_reset(struct parser *p);
  * el usuario alimenta el parser con un caracter, y el parser retorna un evento
  * de parsing. Los eventos son reusado entre llamadas por lo que si se desea
  * capturar los datos se debe clonar.
+ * Se agrega void* data para poder ir guardando los comandos/argumentos dentro de la conexión.
  */
 const struct parser_event *
-parser_feed(struct parser *p, const uint8_t c);
+parser_feed(struct parser *p, const uint8_t c, void* data);
 
 /**
  * En caso de la aplicacion no necesite clases caracteres, se

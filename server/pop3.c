@@ -14,6 +14,7 @@
 #include "../lib/buffer.h"
 #include "../lib/stm.h"
 #include "stm/pop3_stm.h"
+#include "pop3_parser.h"
 
 static void handle_read(struct selector_key *key);
 static void handle_write(struct selector_key *key);
@@ -167,7 +168,9 @@ void accept_pop_connection(struct selector_key *key)
     conn->connection_fd = client_fd;
 
     logf(LOG_INFO, "Registering client with fd %d", client_fd);
-    // registramos en el selector el nuevo socket activo
+    /*
+        En el selector_fd ya creado en main.c, registramos las nuevas conexiones mediante su fd del socket.
+    */
     if (selector_register(key->s, client_fd, &handler, OP_WRITE, conn) != SELECTOR_SUCCESS)
     {
         log(LOG_ERROR, "Failed to register socket") goto fail;
@@ -200,7 +203,7 @@ static void handle_read(struct selector_key *key)
 
 static void handle_write(struct selector_key *key)
 {
-    /* Indicamos que ocurrió el evento write.
+    /* Indicamos que ocurrió el evento write, para el socket con fd de key->fd
         Se ejecuta la función 'on_write_ready' para el estado actual de la maquina de estados
     */
     stm_handler_write(&((struct connection_data *)key->data)->stm, key);

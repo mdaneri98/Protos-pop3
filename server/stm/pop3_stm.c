@@ -1,6 +1,6 @@
 #include "../server_constants.h"
 #include "../../lib/buffer.h"
-#include "../../logger/logger.h"
+#include "../lib/logger/logger.h"
 #include "../../lib/selector.h"
 #include "../../lib/parser.h"
 #include "../args/args.h"
@@ -21,7 +21,7 @@ try_state try_write(const char* str, buffer* buff){
         return TRY_PENDING;
     }
     //Manda el mensaje parcialmente si no hay espacio
-    memcpy(ptr, str, message_len); //eliminar warnings y es mas claro en lo que hacemos (no queremos el \0)
+    memcpy(ptr, str, message_len);
 //    strncpy((char*)ptr, str, message_len);
     buffer_write_adv(buff,(ssize_t)message_len);
     return TRY_DONE;
