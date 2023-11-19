@@ -1,10 +1,12 @@
 #include "../server_constants.h"
 #include "../../lib/buffer.h"
-#include "../lib/logger/logger.h"
+#include "../../lib/logger/logger.h"
 #include "../../lib/selector.h"
 #include "../../lib/parser.h"
 #include "../args/args.h"
 #include <sys/types.h>
+#include <string.h>
+#include <strings.h>
 #include <sys/dir.h>
 
 typedef enum try_state {
@@ -152,9 +154,9 @@ void server_ready(struct connection_data * conn){
         conn->is_finished = true;
         strncpy(ptr, msj, strlen(msj));
         buffer_write_adv(&conn->write_buff_object, (ssize_t) strlen(msj));
-        return true;
+
     }
-    return false;
+
 }
 
 stm_states stm_server_read(struct selector_key *key){
@@ -186,7 +188,7 @@ stm_states read_command(struct selector_key * key, stm_states current_state) {
     ptr = (char *) buffer_read_ptr(&connection->read_buff_object, &read_bytes);
 
     for (size_t i = 0; i < read_bytes; i++) {
-        const struct parser_event * event = parser_feed(connection->parser, ptr[i]);
+        const struct parser_event * event = parser_feed(connection->parser, ptr[i], connection);
         buffer_read_adv(&connection->read_buff_object, 1);
 
         /* event-type es modificado en pop3_parser. 
@@ -206,15 +208,15 @@ stm_states read_command(struct selector_key * key, stm_states current_state) {
                      
                         return next_state;
                     } else {
-                        log_debug("FD %d: Error. Invalid argument", key->fd);
+                        logf(LOG_DEBUG, "FD %d: Error. Invalid argument", key->fd);
                         return ERROR;
                     }
                 }
             }
-            log_debug("FD %d: Error. Invalid command for state", key->fd);
+            logf(LOG_DEBUG, "FD %d: Error. Invalid command for state", key->fd);
             return ERROR;
         } else if (event->type == INVALID_COMMAND) {
-            log_debug("FD %d: Error. Invalid command", key->fd);
+            logf(LOG_DEBUG, "FD %d: Error. Invalid command", key->fd);
             bool saw_carriage_return = ptr[i] == '\r';
             while (i < read_bytes) {
                 char c = (char) buffer_read(&connection->read_buff_object);
@@ -246,12 +248,16 @@ stm_states write_command(struct selector_key * key, stm_states current_state) {
         for (size_t j = 0; j < COMMAND_LENGTH; j++) {
             struct command maybe_command = commands[j];
             if (strcasecmp(maybe_command.name, connection->current_command) == 0) {
-                stm_states next_state = maybe_command.writer(key, connection, ptr, &write_bytes);
+                // stm_states next_state = maybe_command.writer(key, connection, ptr, &write_bytes);
                 buffer_write_adv(&connection->write_buff_object, (ssize_t) write_bytes);
                 if (connection->is_finished) {
-                    clear_parser_buffers(&connection->current_command);
+                    connection->current_command[0] = '\0';
+                    connection->command_length = 0;
+                    connection->argument[0] = '\0';
+                    connection->argument_length = 0;
                 }
-                return next_state;
+                return 0;
+                //return next_state;
             }
         }
     }
@@ -279,10 +285,7 @@ stm_states stm_authorization_write(struct selector_key * key){
     // Si es la primera vez que estamos en el estado AUTHORIZATION,
     // mandamos el mensaje de bienvenida.
     if ((int) connection->last_state == -1) {
-        bool wrote = greet(connection);
-        if (wrote) {
-            connection->last_state = AUTHORIZATION;
-        }
+        server_ready(connection);
         return AUTHORIZATION;
     }
 

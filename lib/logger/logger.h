@@ -13,7 +13,7 @@
 #include <sys/socket.h>
 #include <time.h> // Para el struct tm
 #include <unistd.h>
-#include "../lib/selector.h"
+#include "../selector.h"
 
 typedef enum {
     LOG_DEBUG = 0,

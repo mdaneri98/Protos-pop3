@@ -21,7 +21,7 @@
 
 #include "../lib/buffer.h"
 #include "../lib/netutils.h"
-#include "../logger/logger.h"
+#include "../lib/logger/logger.h"
 
 #include "pop3.h"
 
@@ -144,7 +144,7 @@ main(const int argc, char **argv) {
     }
 
     const int server_6 = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-    if(server < 0) {
+    if(server_6 < 0) {
         err_msg = "unable to create IPv6 socket.";
         goto finally;
     }
@@ -206,7 +206,7 @@ main(const int argc, char **argv) {
     
     // Registramos el socket pasivo dentro del selector.
     // El selector se encargará de monitorear los eventos de este socket.
-    const struct fd_handlers server_handler = {
+    const fd_handler server_handler = {
         .handle_read       = accept_pop_connection,
         .handle_write      = NULL,
         .handle_close      = NULL,

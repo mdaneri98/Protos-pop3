@@ -1,5 +1,5 @@
 #include "pop3_parser.h"
-#include "parser.h"
+#include "../../lib/parser.h"
 // Actions
 
 void parser_command_state_any(struct parser_event *ret, uint8_t c, void *data)
@@ -73,7 +73,7 @@ void parser_end_state_any(struct parser_event *ret, uint8_t c, void *data)
 {
     ret->type = INVALID_COMMAND;
 }
-
+/*
 void get_parsed_cmd(void *data, char *buff, int max)
 {
     // Write in the buffer the commands read
@@ -83,3 +83,4 @@ void get_parsed_arg(void *data, char *buff, int max)
 {
     // Write in the buffer the args read
 }
+*/

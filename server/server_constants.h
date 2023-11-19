@@ -61,6 +61,17 @@ struct users
     bool logged_in;
 };
 
+
+struct session
+{
+    char username[USERNAME_SIZE];
+    char maildir[PATH_SIZE];
+    struct mail *mails;
+    size_t mail_count;
+    size_t maildir_size;
+    bool requested_quit;
+};
+
 typedef struct connection_data
 {
     int connection_fd;
@@ -100,14 +111,5 @@ struct mail
     size_t size;
 };
 
-struct session
-{
-    char username[USERNAME_SIZE];
-    char maildir[PATH_SIZE];
-    struct mail *mails;
-    size_t mail_count;
-    size_t maildir_size;
-    bool requested_quit;
-};
 
 #endif
