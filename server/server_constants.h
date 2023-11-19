@@ -5,8 +5,6 @@
 #include <stdbool.h>
 #include "../lib/buffer.h"
 #include "../lib/stm.h"
-// #include "../constants.h"
-// #include "../lib/include/stm.h"
 
 #define SERVER_PORT 1110
 #define CLIENT_PORT 1120

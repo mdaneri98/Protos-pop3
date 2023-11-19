@@ -12,7 +12,6 @@
 #include "../lib/parser.h"
 #include "pop3.h"
 #include "../lib/buffer.h"
-#include "../lib/stm.h"
 #include "stm/pop3_stm.h"
 #include "parser/pop3_parser.h"
 
@@ -203,7 +202,7 @@ static void handle_read(struct selector_key *key)
     /* Indicamos que ocurrió el evento read.
         Se ejecuta la función 'on_read_ready' para el estado actual de la maquina de estados
     */
-    stm_handler_read(&((struct connection_data *)key->data)->stm, key);
+    stm_handler_read(&((struct connection_data *)key->data)->stm, key);    
 }
 
 static void handle_write(struct selector_key *key)
@@ -212,6 +211,9 @@ static void handle_write(struct selector_key *key)
         Se ejecuta la función 'on_write_ready' para el estado actual de la maquina de estados
     */
     stm_handler_write(&((struct connection_data *)key->data)->stm, key);
+
+
+    
 }
 
 static void handle_close(struct selector_key *key)

@@ -1,6 +1,8 @@
 #ifndef STM_H_wL7YxN65ZHqKGvCPrNbPtMJgL8B
 #define STM_H_wL7YxN65ZHqKGvCPrNbPtMJgL8B
 
+#include "selector.h"
+
 /**
  * stm.c - pequeño motor de maquina de estados donde los eventos son los
  *         del selector.c
@@ -34,8 +36,6 @@ struct state_machine {
     const struct state_definition *current;
 };
 
-struct selector_key *key;
-
 /**
  * definición de un estado de la máquina de estados
  */
@@ -45,7 +45,6 @@ struct state_definition {
      * desde 0 y no es esparso.
      */
     unsigned state;
-
     /** ejecutado al arribar al estado */
     void     (*on_arrival)    (const unsigned state, struct selector_key *key);
     /** ejecutado al salir del estado */
@@ -82,5 +81,7 @@ stm_handler_block(struct state_machine *stm, struct selector_key *key);
 /** indica que ocurrió el evento close. retorna nuevo id de nuevo estado. */
 void
 stm_handler_close(struct state_machine *stm, struct selector_key *key);
+
+void stm_change_state(struct state_machine *stm, unsigned next, struct selector_key *key);
 
 #endif

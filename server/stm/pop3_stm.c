@@ -126,13 +126,13 @@ typedef enum command_args {
 } command_args;
 
 
-static struct command {
+struct command {
     const char * name;
     command_args arguments;
     stm_states (*handler)(struct selector_key *, struct connection_data *);
 };
 
-static struct command commands[] = {
+struct command commands[] = {
         {
             .name = "USER",
             .arguments = REQUIRED,
@@ -161,7 +161,7 @@ void server_ready(struct connection_data * conn){
 
 stm_states stm_server_read(struct selector_key *key){
     connection_data * connection = (connection_data *) key->data;
-
+    return connection->stm.current->state;
 /*
     if(!buffer_can_read[&connection->read_buff_object]){
         
@@ -176,6 +176,8 @@ stm_states read_command(struct selector_key * key, stm_states current_state) {
 
     if (!buffer_can_read(&connection->read_buff_object)) {
         size_t write_bytes;
+
+        // Escribimos en el buffer de lectura.
         ptr = (char *) buffer_write_ptr(&connection->read_buff_object, &write_bytes);
         ssize_t n = recv(key->fd, ptr, write_bytes, 0);
         if (n == 0) {
@@ -183,11 +185,13 @@ stm_states read_command(struct selector_key * key, stm_states current_state) {
         }
         buffer_write_adv(&connection->read_buff_object, n);
     }
+    // Acá ya tenemos actualizado el buffer de lectura.
+
 
     size_t read_bytes;
     ptr = (char *) buffer_read_ptr(&connection->read_buff_object, &read_bytes);
-
     for (size_t i = 0; i < read_bytes; i++) {
+        // Alimentamos el parser con lo leido.
         const struct parser_event * event = parser_feed(connection->parser, ptr[i], connection);
         buffer_read_adv(&connection->read_buff_object, 1);
 
@@ -201,11 +205,12 @@ stm_states read_command(struct selector_key * key, stm_states current_state) {
                     if ((maybe_command.arguments == REQUIRED && connection->argument_length > 0) ||
                         (maybe_command.arguments == EMPTY && connection->argument_length == 0) ||
                         (maybe_command.arguments == OPTIONAL)) {
+                        
+                        // Ejecutamos el comando.
                         stm_states next_state = maybe_command.handler(key, connection);
-                     
-                     
-                     //   selector_set_interest_key(key, OP_WRITE);
-                     
+
+                        // Vamos a escribir.
+                        selector_set_interest_key(key, OP_WRITE);                     
                         return next_state;
                     } else {
                         logf(LOG_DEBUG, "FD %d: Error. Invalid argument", key->fd);
@@ -242,25 +247,12 @@ stm_states write_command(struct selector_key * key, stm_states current_state) {
     connection_data* connection = (connection_data*) key->data;
     char * ptr;
 
-    if (buffer_can_write(&connection->write_buff_object)) {
+    if (buffer_can_read(&connection->write_buff_object)) {
         size_t write_bytes;
-        ptr = (char *) buffer_write_ptr(&connection->write_buff_object, &write_bytes);
-        for (size_t j = 0; j < COMMAND_LENGTH; j++) {
-            struct command maybe_command = commands[j];
-            if (strcasecmp(maybe_command.name, connection->current_command) == 0) {
-                // stm_states next_state = maybe_command.writer(key, connection, ptr, &write_bytes);
-                buffer_write_adv(&connection->write_buff_object, (ssize_t) write_bytes);
-                if (connection->is_finished) {
-                    connection->current_command[0] = '\0';
-                    connection->command_length = 0;
-                    connection->argument[0] = '\0';
-                    connection->argument_length = 0;
-                }
-                return 0;
-                //return next_state;
-            }
-        }
+        ptr = (char *) buffer_read_ptr(&connection->write_buff_object, &write_bytes);
+        send(key->fd, ptr, write_bytes, MSG_NOSIGNAL);
     }
+
 
     return current_state;
 }
@@ -292,12 +284,14 @@ stm_states stm_authorization_write(struct selector_key * key){
     return write_command(key, AUTHORIZATION);
 }
 
-void stm_transaction_arrival(stm_states state, struct selector_key * key){
-
+stm_states stm_transaction_arrival(stm_states state, struct selector_key * key){
+    connection_data * connection = (connection_data *) key->data;
+    return connection->stm.current->state;
 }
 
-void stm_transaction_departure(stm_states state, struct selector_key * key){
-
+stm_states stm_transaction_departure(stm_states state, struct selector_key * key){
+    connection_data * connection = (connection_data *) key->data;
+    return connection->stm.current->state;
 }
 
 stm_states stm_transaction_read(struct selector_key * key) {
@@ -305,37 +299,46 @@ stm_states stm_transaction_read(struct selector_key * key) {
 }
 
 stm_states stm_transaction_write(struct selector_key * key){
-
+    connection_data * connection = (connection_data *) key->data;
+    return connection->stm.current->state;
 }
 
-void stm_error_arrival(stm_states state, struct selector_key * key){
-
+stm_states stm_error_arrival(stm_states state, struct selector_key * key){
+    connection_data * connection = (connection_data *) key->data;
+    return connection->stm.current->state;
 }
 
-void stm_error_departure(stm_states state, struct selector_key * key){
-
+stm_states stm_error_departure(stm_states state, struct selector_key * key){
+    connection_data * connection = (connection_data *) key->data;
+    return connection->stm.current->state;
 }
 
 stm_states stm_error_read(struct selector_key * key){
-
+    connection_data * connection = (connection_data *) key->data;
+    return connection->stm.current->state;
 }
 
 stm_states stm_error_write(struct selector_key * key){
-
+    connection_data * connection = (connection_data *) key->data;
+    return connection->stm.current->state;
 }
 
-void stm_quit_arrival(stm_states state, struct selector_key * key){
-
+stm_states stm_quit_arrival(stm_states state, struct selector_key * key){
+    connection_data * connection = (connection_data *) key->data;
+    return connection->stm.current->state;
 }
 
-void stm_quit_departure(stm_states state, struct selector_key * key){
-
+stm_states stm_quit_departure(stm_states state, struct selector_key * key){
+    connection_data * connection = (connection_data *) key->data;
+    return connection->stm.current->state;
 }
 
 stm_states stm_quit_read(struct selector_key * key){
-
+    connection_data * connection = (connection_data *) key->data;
+    return connection->stm.current->state;
 }
 
 stm_states stm_quit_write(struct selector_key * key){
-
+    connection_data * connection = (connection_data *) key->data;
+    return connection->stm.current->state;
 }

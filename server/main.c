@@ -248,7 +248,11 @@ finally:
         logf(LOG_ERROR, "%s: %s", err_msg, strerror(errno));
         ret = 1;
     }
-
+    if(selector != NULL) { //si pudimos obtener el selector, lo liberamos
+        log(LOG_INFO, "Destroying selector");
+        selector_destroy(selector);
+    }
+    selector_close();
     if (server >= 0)
     {
         close(server);
