@@ -238,6 +238,24 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
 
 stm_states dele_handler(struct selector_key *key, connection_data *conn)
 {
+    log(LOG_DEBUG, "FD %d: DELE command");
+
+    size_t mail_number = atoi(conn->argument);
+
+    if (mail_number <= 0 || mail_number > conn->current_session.mail_count)
+    {
+        log(LOG_DEBUG, "FD %d: Error. Invalid mail number");
+        char *msj = "-ERR no such message\r\n";
+        try_write(msj, &(conn->out_buff_object));
+        return TRANSACTION;
+    }
+
+    conn->current_session.mails[mail_number - 1].deleted = true;
+    conn->current_session.maildir_size -= conn->current_session.mails[mail_number - 1].size;
+
+    char msj[100];
+    sprintf(msj, "+OK message %d deleted\r\n", (int)mail_number);
+    try_write(msj, &(conn->out_buff_object));
     return TRANSACTION;
 }
 
