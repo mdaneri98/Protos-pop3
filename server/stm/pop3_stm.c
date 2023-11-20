@@ -125,6 +125,41 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
     return AUTHORIZATION;
 }
 
+stm_states stat_handler(struct selector_key *key, connection_data *conn)
+{
+
+}
+
+stm_states list_handler(struct selector_key *key, connection_data *conn)
+{
+
+}
+
+stm_states retr_handler(struct selector_key *key, connection_data *conn)
+{
+
+}
+
+stm_states dele_handler(struct selector_key *key, connection_data *conn)
+{
+
+}
+
+stm_states noop_handler(struct selector_key *key, connection_data *conn)
+{
+
+}
+
+stm_states rset_handler(struct selector_key *key, connection_data *conn)
+{
+
+}
+
+stm_states quit_handler(struct selector_key *key, connection_data *conn)
+{
+
+}
+
 typedef enum command_args
 {
     REQUIRED,
@@ -146,6 +181,28 @@ struct command commands[] = {
     {.name = "PASS",
      .arguments = REQUIRED,
      .handler = pass_handler},
+
+     {.name = "STAT",
+     .arguments = EMPTY,
+     .handler = stat_handler},
+     {.name = "LIST",
+    .arguments = OPTIONAL,
+    .handler = list_handler},
+    {.name = "RETR",
+    .arguments = REQUIRED,
+    .handler = retr_handler},
+    {.name = "DELE",
+    .arguments = REQUIRED,
+    .handler = dele_handler},
+    {.name = "NOOP",
+    .arguments = EMPTY,
+    .handler = noop_handler},
+    {.name = "RSET",
+    .arguments = EMPTY,
+    .handler = rset_handler},
+    {.name = "QUIT",
+    .arguments = EMPTY,
+    .handler = quit_handler}
 };
 
 bool server_ready(struct connection_data *conn)
