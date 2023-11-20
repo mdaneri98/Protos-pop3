@@ -100,7 +100,7 @@ connection_data *pop3_init(void *data)
     // Se inicializa la maquina de estados para el cliente
     buffer_init(&conn->in_buff_object, BUFFER_SIZE, conn->in_buff);
     buffer_init(&conn->out_buff_object, BUFFER_SIZE, conn->out_buff);
-    
+
     log(LOG_DEBUG, "Initializing parser");
     conn->parser = parser_init(parser_no_classes(), &parser_definition);
 
@@ -119,7 +119,7 @@ connection_data *pop3_init(void *data)
     conn->argument_length = 0;
     conn->is_finished = false;
     conn->command_error = false;
-    
+
     conn->args = (struct args *)data;
 
     log(LOG_DEBUG, "Finished initializing structure");
@@ -209,7 +209,7 @@ static void handle_read(struct selector_key *key)
     /* Indicamos que ocurrió el evento read.
         Se ejecuta la función 'on_read_ready' para el estado actual de la maquina de estados
     */
-    stm_handler_read(&((struct connection_data *)key->data)->stm, key);    
+    stm_handler_read(&((struct connection_data *)key->data)->stm, key);
 }
 
 static void handle_write(struct selector_key *key)
@@ -218,9 +218,6 @@ static void handle_write(struct selector_key *key)
         Se ejecuta la función 'on_write_ready' para el estado actual de la maquina de estados
     */
     stm_handler_write(&((struct connection_data *)key->data)->stm, key);
-
-
-    
 }
 
 static void handle_close(struct selector_key *key)

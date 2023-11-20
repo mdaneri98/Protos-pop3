@@ -4,7 +4,7 @@
 
 void parser_command_state_any(struct parser_event *ret, uint8_t c, void *data)
 {
-    connection_data* d = (connection_data*) data;
+    connection_data *d = (connection_data *)data;
     if (d->command_length < MIN_COMMAND_LENGTH)
     {
         ret->type = UNDEFINED;
@@ -17,7 +17,7 @@ void parser_command_state_any(struct parser_event *ret, uint8_t c, void *data)
 
 void parser_command_state_carriage_return(struct parser_event *ret, uint8_t c, void *data)
 {
-    connection_data* d = (connection_data*) data;
+    connection_data *d = (connection_data *)data;
     if (d->command_length < MIN_COMMAND_LENGTH)
     {
         ret->type = INVALID_COMMAND;
@@ -27,9 +27,9 @@ void parser_command_state_carriage_return(struct parser_event *ret, uint8_t c, v
     ret->type = UNDEFINED;
 }
 
-void parser_command_state_space(struct parser_event* ret, uint8_t c, void *data)
+void parser_command_state_space(struct parser_event *ret, uint8_t c, void *data)
 {
-    connection_data* d = (connection_data*) data;
+    connection_data *d = (connection_data *)data;
     if (d->command_length < MIN_COMMAND_LENGTH)
     {
         ret->type = INVALID_COMMAND;
@@ -41,7 +41,7 @@ void parser_command_state_space(struct parser_event* ret, uint8_t c, void *data)
 
 void parser_argument_state_any(struct parser_event *ret, uint8_t c, void *data)
 {
-    connection_data* d = (connection_data*) data;
+    connection_data *d = (connection_data *)data;
     if (d->argument_length < ARGUMENT_LENGTH)
     {
         ret->type = UNDEFINED;
@@ -54,8 +54,8 @@ void parser_argument_state_any(struct parser_event *ret, uint8_t c, void *data)
 
 void parser_argument_state_carriage_return(struct parser_event *ret, uint8_t c, void *data)
 {
-    connection_data* d = (connection_data*) data;
-    if (d->argument_length > 0)
+    connection_data *d = (connection_data *)data;
+    if (d->argument_length > 0 && d->argument_length < ARGUMENT_LENGTH)
     {
         ret->type = UNDEFINED;
         d->argument[d->argument_length] = '\0';
