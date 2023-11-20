@@ -50,7 +50,6 @@ typedef enum
     UNDEFINED,
     VALID_COMMAND,
     INVALID_COMMAND,
-    DEBUGUGU
 } parser_event_types;
 
 struct users
