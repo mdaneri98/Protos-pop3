@@ -198,7 +198,7 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
 
     size_t mail_number=atoi(conn->argument);
 
-    if(mail_number > conn->current_session.mail_count){
+    if(mail_number <= 0 || mail_number > conn->current_session.mail_count){
         log(LOG_DEBUG, "FD %d: Error. Invalid mail number");
         char *msj = "-ERR no such message\r\n";
         try_write(msj, &(conn->out_buff_object));
@@ -206,11 +206,11 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
     }
 
     char mail_path[PATH_SIZE];
-    strcat(mail_path, conn->current_session.mails[mail_number-1].path);
+    strcpy(mail_path, conn->current_session.mails[mail_number-1].path);
 
     FILE *mail_file = fopen(mail_path, "r");
     if(mail_file==NULL){
-        log(LOG_DEBUG, "FD %d: Error opening mail file");
+        logf(LOG_DEBUG, "FD %d: Error opening mail file with path %s", key->fd, mail_path);
         char *msj = "-ERR no such message\r\n";
         try_write(msj, &(conn->out_buff_object));
         return TRANSACTION;
@@ -550,7 +550,7 @@ void stm_transaction_arrival(stm_states state, struct selector_key *key)
         strcat(connection->current_session.mails[i].path, "/");
         strcat(connection->current_session.mails[i].path, file->d_name);
 
-        
+        logf(LOG_DEBUG, "FD %d: Added mail for %s with path %s", key->fd, connection->user->name, connection->current_session.mails[i].path);
 
         struct stat file_stat;
         if (stat(connection->current_session.mails[i].path, &file_stat) == 0) {
