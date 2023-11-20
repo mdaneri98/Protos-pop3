@@ -134,6 +134,51 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
     return AUTHORIZATION;
 }
 
+stm_states stat_handler(struct selector_key *key, connection_data *conn)
+{
+    log(LOG_DEBUG, "FD %d: STAT command");
+
+    size_t mail_count = conn->current_session.mail_count;
+    size_t maildir_size = conn->current_session.maildir_size;
+
+    char msj[100];
+    sprintf(msj, "+OK %d %d\r\n", (int)mail_count, (int)maildir_size);
+    try_write(msj, &(conn->out_buff_object));
+    return TRANSACTION;
+}
+
+stm_states list_handler(struct selector_key *key, connection_data *conn)
+{
+    return TRANSACTION;
+}
+
+stm_states retr_handler(struct selector_key *key, connection_data *conn)
+{
+    return TRANSACTION;
+}
+
+stm_states dele_handler(struct selector_key *key, connection_data *conn)
+{
+    return TRANSACTION;
+}
+
+stm_states noop_handler(struct selector_key *key, connection_data *conn)
+{
+    log(LOG_DEBUG,"FD %d: NOOP command");
+    conn->is_finished = true;
+    return TRANSACTION;
+}
+
+stm_states rset_handler(struct selector_key *key, connection_data *conn)
+{
+    return TRANSACTION;
+}
+
+stm_states quit_handler(struct selector_key *key, connection_data *conn)
+{
+    return TRANSACTION;
+}
+
 typedef enum command_args
 {
     REQUIRED,
@@ -155,6 +200,28 @@ struct command commands[] = {
     {.name = "PASS",
      .arguments = REQUIRED,
      .handler = pass_handler},
+
+     {.name = "STAT",
+     .arguments = EMPTY,
+     .handler = stat_handler},
+     {.name = "LIST",
+    .arguments = OPTIONAL,
+    .handler = list_handler},
+    {.name = "RETR",
+    .arguments = REQUIRED,
+    .handler = retr_handler},
+    {.name = "DELE",
+    .arguments = REQUIRED,
+    .handler = dele_handler},
+    {.name = "NOOP",
+    .arguments = EMPTY,
+    .handler = noop_handler},
+    {.name = "RSET",
+    .arguments = EMPTY,
+    .handler = rset_handler},
+    {.name = "QUIT",
+    .arguments = EMPTY,
+    .handler = quit_handler}
 };
 
 bool server_ready(struct connection_data *conn)
