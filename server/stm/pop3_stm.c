@@ -145,6 +145,40 @@ stm_states list_handler(struct selector_key *key, connection_data *conn)
 
 stm_states retr_handler(struct selector_key *key, connection_data *conn)
 {
+    log(LOG_DEBUG, "FD %d: RETR command");
+
+    size_t mail_number=atoi(conn->argument);
+
+    if(mail_number > conn->current_session.mail_count){
+        log(LOG_DEBUG, "FD %d: Error. Invalid mail number");
+        char *msj = "-ERR no such message\r\n";
+        try_write(msj, &(conn->out_buff_object));
+        return TRANSACTION;
+    }
+
+    char mail_path[PATH_SIZE];
+    strcat(mail_path, conn->current_session.mails[mail_number-1].path);
+
+    FILE *mail_file = fopen(mail_path, "r");
+    if(mail_file==NULL){
+        log(LOG_DEBUG, "FD %d: Error opening mail file");
+        char *msj = "-ERR no such message\r\n";
+        try_write(msj, &(conn->out_buff_object));
+        return TRANSACTION;
+    }
+
+    char *msj = "+OK\r\n";
+    try_write(msj, &(conn->out_buff_object));
+
+    char *ptr;
+    size_t n;
+    ptr = (char *)buffer_write_ptr(&conn->out_buff_object, &n);
+
+    size_t bytes_read = fread(ptr, sizeof(char), n, mail_file);
+    buffer_write_adv(&conn->out_buff_object, bytes_read);
+
+    fclose(mail_file);
+
     return TRANSACTION;
 }
 
