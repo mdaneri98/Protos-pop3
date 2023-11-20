@@ -42,8 +42,8 @@ stm_states user_handler(struct selector_key *key, connection_data *conn)
     struct users *users = conn->args->users;
     size_t users_count = conn->args->users_count;
 
-    //The server may return a positive response even though no
-    //such mailbox exists.
+    // The server may return a positive response even though no
+    // such mailbox exists.
     for (size_t i = 0; i < users_count; i++)
     {
         // Si el usuario existe, seteamos el maildir y el username en la sesion actual.
@@ -72,8 +72,8 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
 {
     logf(LOG_DEBUG, "FD %d: PASS command", key->fd);
 
-    struct users* user = conn->user;
-    if (user->name[0] == '\0') 
+    struct users *user = conn->user;
+    if (user->name[0] == '\0')
     {
         char *msj = "-ERR no username given\r\n";
         try_write(msj, &(conn->out_buff_object));
@@ -93,7 +93,7 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
             break;
         }
     }
-//---
+    //---
 
     // El usuario existe, es la contraseña correcta?
     if (authenticated)
@@ -132,11 +132,10 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
         char *msj = "+OK logged in\r\n";
         try_write(msj, &(conn->out_buff_object));
 
-
         conn->command_error = false;
         return TRANSACTION;
     }
-    
+
     logf(LOG_DEBUG, "FD %d: User %s password %s incorrect", key->fd, conn->user->name, conn->argument);
     conn->command_error = true;
     return AUTHORIZATION;
@@ -196,9 +195,10 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
 {
     log(LOG_DEBUG, "FD %d: RETR command");
 
-    size_t mail_number=atoi(conn->argument);
+    size_t mail_number = atoi(conn->argument);
 
-    if(mail_number <= 0 || mail_number > conn->current_session.mail_count){
+    if (mail_number <= 0 || mail_number > conn->current_session.mail_count)
+    {
         log(LOG_DEBUG, "FD %d: Error. Invalid mail number");
         char *msj = "-ERR no such message\r\n";
         try_write(msj, &(conn->out_buff_object));
@@ -206,10 +206,11 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
     }
 
     char mail_path[PATH_SIZE];
-    strcpy(mail_path, conn->current_session.mails[mail_number-1].path);
+    strcpy(mail_path, conn->current_session.mails[mail_number - 1].path);
 
     FILE *mail_file = fopen(mail_path, "r");
-    if(mail_file==NULL){
+    if (mail_file == NULL)
+    {
         logf(LOG_DEBUG, "FD %d: Error opening mail file with path %s", key->fd, mail_path);
         char *msj = "-ERR no such message\r\n";
         try_write(msj, &(conn->out_buff_object));
@@ -228,6 +229,8 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
 
     fclose(mail_file);
 
+    try_write("\r\n.\r\n", &(conn->out_buff_object));
+
     return TRANSACTION;
 }
 
@@ -238,7 +241,7 @@ stm_states dele_handler(struct selector_key *key, connection_data *conn)
 
 stm_states noop_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG,"FD %d: NOOP command");
+    log(LOG_DEBUG, "FD %d: NOOP command");
     conn->is_finished = true;
     char msj[100];
     sprintf(msj, "+OK\r\n");
@@ -248,9 +251,10 @@ stm_states noop_handler(struct selector_key *key, connection_data *conn)
 
 stm_states rset_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG,"RSET");
+    log(LOG_DEBUG, "RSET");
     size_t maildir_size = 0;
-    for (size_t i = 0; i < conn->current_session.mail_count; i++) {
+    for (size_t i = 0; i < conn->current_session.mail_count; i++)
+    {
         conn->current_session.mails[i].deleted = false;
         maildir_size += conn->current_session.mails[i].size;
     }
@@ -263,9 +267,11 @@ stm_states rset_handler(struct selector_key *key, connection_data *conn)
 
 stm_states quit_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG,"QUIT");
-    for (size_t i = 0; i < conn->current_session.mail_count; i++) {
-        if (conn->current_session.mails[i].deleted) {
+    log(LOG_DEBUG, "QUIT");
+    for (size_t i = 0; i < conn->current_session.mail_count; i++)
+    {
+        if (conn->current_session.mails[i].deleted)
+        {
             remove(conn->current_session.mails[i].path);
         }
     }
@@ -525,25 +531,31 @@ stm_states stm_authorization_write(struct selector_key *key)
 void stm_transaction_arrival(stm_states state, struct selector_key *key)
 {
     logf(LOG_DEBUG, "FD %d: stm_transaction_arrival", key->fd);
-    
-    connection_data* connection = (connection_data *)key->data;
-    if (connection->current_session.mail_count != 0) {
+
+    connection_data *connection = (connection_data *)key->data;
+    if (connection->current_session.mail_count != 0)
+    {
         return;
     }
 
-    DIR * directory = opendir(connection->current_session.maildir);
-    struct dirent * file;
-    while (connection->current_session.mail_count < connection->args->max_mails && (file = readdir(directory)) != NULL) {
-        if (strcmp(".", file->d_name) == 0 || strcmp("..", file->d_name) == 0) {
+    DIR *directory = opendir(connection->current_session.maildir);
+    struct dirent *file;
+    while (connection->current_session.mail_count < connection->args->max_mails && (file = readdir(directory)) != NULL)
+    {
+        if (strcmp(".", file->d_name) == 0 || strcmp("..", file->d_name) == 0)
+        {
             continue;
         }
         logf(LOG_DEBUG, "FD %d: Found mail for %s with file name %s", key->fd, connection->user->name, file->d_name);
 
         size_t i = connection->current_session.mail_count;
 
-        if (connection->current_session.mails == NULL) {
+        if (connection->current_session.mails == NULL)
+        {
             connection->current_session.mails = calloc(1, sizeof(struct mail));
-        } else {
+        }
+        else
+        {
             connection->current_session.mails = realloc(connection->current_session.mails, sizeof(struct mail) * (i + 1));
         }
         strcat(connection->current_session.mails[i].path, connection->current_session.maildir);
@@ -553,10 +565,13 @@ void stm_transaction_arrival(stm_states state, struct selector_key *key)
         logf(LOG_DEBUG, "FD %d: Added mail for %s with path %s", key->fd, connection->user->name, connection->current_session.mails[i].path);
 
         struct stat file_stat;
-        if (stat(connection->current_session.mails[i].path, &file_stat) == 0) {
+        if (stat(connection->current_session.mails[i].path, &file_stat) == 0)
+        {
             connection->current_session.maildir_size += file_stat.st_size; // Acumula el tamaño del archivo
             connection->current_session.mail_count++;
-        } else {
+        }
+        else
+        {
             logf(LOG_DEBUG, "FD %d: Error getting file size for %s", key->fd, connection->current_session.mails[i].path);
         }
     }
