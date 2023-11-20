@@ -4,8 +4,10 @@
 #include "../../lib/selector.h"
 #include "../../lib/parser.h"
 #include "../args/args.h"
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <string.h>
+#include <errno.h>
 #include <strings.h>
 #include <sys/dir.h>
 
@@ -108,7 +110,7 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
         DIR *directory = opendir(conn->current_session.maildir);
         if (directory == NULL)
         {
-            logf(LOG_DEBUG, "FD %d: User %s doesn't have directory entry at %s.", key->fd, conn->user->name, conn->current_session.maildir);
+            logf(LOG_DEBUG, "FD %d: User %s doesn't have directory entry at %s and gone with error %s", key->fd, conn->user->name, conn->current_session.maildir, strerror(errno));
 
             conn->command_error = true;
             conn->current_session.maildir[0] = '\0';
@@ -126,6 +128,10 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
         conn->user->logged_in = true;
         strcpy(conn->current_session.username, conn->user->name);
         strcpy(conn->user->pass, conn->argument);
+
+        char *msj = "+OK logged in\r\n";
+        try_write(msj, &(conn->out_buff_object));
+
 
         conn->command_error = false;
         return TRANSACTION;
@@ -462,6 +468,42 @@ stm_states stm_authorization_write(struct selector_key *key)
 void stm_transaction_arrival(stm_states state, struct selector_key *key)
 {
     logf(LOG_DEBUG, "FD %d: stm_transaction_arrival", key->fd);
+    
+    connection_data* connection = (connection_data *)key->data;
+    if (connection->current_session.mail_count != 0) {
+        return;
+    }
+
+    DIR * directory = opendir(connection->current_session.maildir);
+    struct dirent * file;
+    while (connection->current_session.mail_count < connection->args->max_mails && (file = readdir(directory)) != NULL) {
+        if (strcmp(".", file->d_name) == 0 || strcmp("..", file->d_name) == 0) {
+            continue;
+        }
+        logf(LOG_DEBUG, "FD %d: Found mail for %s with file name %s", key->fd, connection->user->name, file->d_name);
+
+        size_t i = connection->current_session.mail_count;
+
+        if (connection->current_session.mails == NULL) {
+            connection->current_session.mails = calloc(1, sizeof(struct mail));
+        } else {
+            connection->current_session.mails = realloc(connection->current_session.mails, sizeof(struct mail) * (i + 1));
+        }
+        strcat(connection->current_session.mails[i].path, connection->current_session.maildir);
+        strcat(connection->current_session.mails[i].path, "/");
+        strcat(connection->current_session.mails[i].path, file->d_name);
+
+        
+
+        struct stat file_stat;
+        if (stat(connection->current_session.mails[i].path, &file_stat) == 0) {
+            connection->current_session.maildir_size += file_stat.st_size; // Acumula el tamaño del archivo
+            connection->current_session.mail_count++;
+        } else {
+            logf(LOG_DEBUG, "FD %d: Error getting file size for %s", key->fd, connection->current_session.mails[i].path);
+        }
+    }
+    closedir(directory);
 }
 
 void stm_transaction_departure(stm_states state, struct selector_key *key)
