@@ -112,7 +112,7 @@ connection_data *pop3_init(void *data)
     conn->last_state = -1;
 
     log(LOG_DEBUG, "Initializing command data.");
-    conn->user = NULL;
+    conn->user = calloc(1, sizeof(struct users));
     conn->current_command[0] = '\0';
     conn->command_length = 0;
     conn->argument[0] = '\0';

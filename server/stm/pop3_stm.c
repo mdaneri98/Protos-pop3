@@ -40,41 +40,23 @@ stm_states user_handler(struct selector_key *key, connection_data *conn)
     struct users *users = conn->args->users;
     size_t users_count = conn->args->users_count;
 
+    //The server may return a positive response even though no
+    //such mailbox exists.
     for (size_t i = 0; i < users_count; i++)
     {
         // Si el usuario existe, seteamos el maildir y el username en la sesion actual.
         if (strcmp(users[i].name, conn->argument) == 0)
         {
-            char base_directory[PATH_SIZE];
-            strcpy(base_directory, conn->args->mail_directory);
-
-            conn->current_session.maildir[0] = '\0';
-            strcat(conn->current_session.maildir, base_directory);
-            strcat(conn->current_session.maildir, "/");
-            strcat(conn->current_session.maildir, conn->argument);
-            strcat(conn->current_session.maildir, "/cur");
-
-            DIR *directory = opendir(conn->current_session.maildir);
-            if (directory == NULL)
-            {
-                conn->command_error = true;
-                conn->current_session.maildir[0] = '\0';
-
-                char *msj = "-ERR invalid user\r\n";
-                try_write(msj, &(conn->out_buff_object));
-
-                return AUTHORIZATION;
-            }
-            closedir(directory);
+            strcpy(conn->user->name, conn->argument);
 
             char *msj = "+OK valid user\r\n";
             try_write(msj, &(conn->out_buff_object));
 
-            strcpy(conn->current_session.username, conn->argument);
             conn->command_error = false;
             return AUTHORIZATION;
         }
     }
+    conn->user->name[0] = '\0';
 
     char *msj = "-ERR invalid user\r\n";
     try_write(msj, &(conn->out_buff_object));
@@ -86,41 +68,70 @@ stm_states user_handler(struct selector_key *key, connection_data *conn)
 
 stm_states pass_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "FD %d: USER command");
+    logf(LOG_DEBUG, "FD %d: PASS command", key->fd);
 
+    struct users* user = conn->user;
+    if (user->name[0] == '\0') 
+    {
+        char *msj = "-ERR no username given\r\n";
+        try_write(msj, &(conn->out_buff_object));
+        conn->command_error = true;
+        return AUTHORIZATION;
+    }
+
+    bool authenticated = false;
     struct users *users = conn->args->users;
     size_t users_count = conn->args->users_count;
-
     for (size_t i = 0; i < users_count; i++)
     {
         // Si el usuario existe, seteamos el maildir y el username en la sesion actual.
-        if (strcmp(users[i].name, conn->argument) == 0)
+        if (strcmp(users[i].name, user->name) == 0)
         {
-            char base_directory[PATH_SIZE];
-            strcpy(base_directory, conn->args->mail_directory);
-
-            conn->current_session.maildir[0] = '\0';
-            strcat(conn->current_session.maildir, base_directory);
-            strcat(conn->current_session.maildir, "/");
-            strcat(conn->current_session.maildir, conn->argument);
-            strcat(conn->current_session.maildir, "/cur");
-
-            DIR *directory = opendir(conn->current_session.maildir);
-            if (directory == NULL)
-            {
-                conn->command_error = true;
-                conn->current_session.maildir[0] = '\0';
-                return AUTHORIZATION;
-            }
-            closedir(directory);
-
-            strcpy(conn->current_session.username, conn->argument);
-            conn->command_error = false;
-            return AUTHORIZATION;
+            authenticated = strcmp(users[i].pass, conn->argument) == 0;
+            break;
         }
     }
+//---
 
-    // Si el usuario no existe, seteamos el error en true.
+    // El usuario existe, es la contraseña correcta?
+    if (authenticated)
+    {
+        char base_directory[PATH_SIZE];
+        strcpy(base_directory, conn->args->mail_directory);
+
+        conn->current_session.maildir[0] = '\0';
+        strcat(conn->current_session.maildir, base_directory);
+        strcat(conn->current_session.maildir, "/");
+        strcat(conn->current_session.maildir, conn->user->name);
+        strcat(conn->current_session.maildir, "/cur");
+
+        DIR *directory = opendir(conn->current_session.maildir);
+        if (directory == NULL)
+        {
+            logf(LOG_DEBUG, "FD %d: User %s doesn't have directory entry at %s.", key->fd, conn->user->name, conn->current_session.maildir);
+
+            conn->command_error = true;
+            conn->current_session.maildir[0] = '\0';
+            conn->user->name[0] = '\0';
+
+            char *msj = "-ERR invalid user\r\n";
+            try_write(msj, &(conn->out_buff_object));
+
+            return AUTHORIZATION;
+        }
+        logf(LOG_DEBUG, "FD %d: User %s has directory entry at %s.", key->fd, conn->user->name, conn->current_session.maildir);
+        closedir(directory);
+
+        logf(LOG_DEBUG, "FD %d: User %s logged_in", key->fd, conn->user->name);
+        conn->user->logged_in = true;
+        strcpy(conn->current_session.username, conn->user->name);
+        strcpy(conn->user->pass, conn->argument);
+
+        conn->command_error = false;
+        return TRANSACTION;
+    }
+    
+    logf(LOG_DEBUG, "FD %d: User %s password %s incorrect", key->fd, conn->user->name, conn->argument);
     conn->command_error = true;
     return AUTHORIZATION;
 }
@@ -177,6 +188,40 @@ stm_states list_handler(struct selector_key *key, connection_data *conn)
 
 stm_states retr_handler(struct selector_key *key, connection_data *conn)
 {
+    log(LOG_DEBUG, "FD %d: RETR command");
+
+    size_t mail_number=atoi(conn->argument);
+
+    if(mail_number > conn->current_session.mail_count){
+        log(LOG_DEBUG, "FD %d: Error. Invalid mail number");
+        char *msj = "-ERR no such message\r\n";
+        try_write(msj, &(conn->out_buff_object));
+        return TRANSACTION;
+    }
+
+    char mail_path[PATH_SIZE];
+    strcat(mail_path, conn->current_session.mails[mail_number-1].path);
+
+    FILE *mail_file = fopen(mail_path, "r");
+    if(mail_file==NULL){
+        log(LOG_DEBUG, "FD %d: Error opening mail file");
+        char *msj = "-ERR no such message\r\n";
+        try_write(msj, &(conn->out_buff_object));
+        return TRANSACTION;
+    }
+
+    char *msj = "+OK\r\n";
+    try_write(msj, &(conn->out_buff_object));
+
+    char *ptr;
+    size_t n;
+    ptr = (char *)buffer_write_ptr(&conn->out_buff_object, &n);
+
+    size_t bytes_read = fread(ptr, sizeof(char), n, mail_file);
+    buffer_write_adv(&conn->out_buff_object, bytes_read);
+
+    fclose(mail_file);
+
     return TRANSACTION;
 }
 
@@ -187,6 +232,8 @@ stm_states dele_handler(struct selector_key *key, connection_data *conn)
 
 stm_states noop_handler(struct selector_key *key, connection_data *conn)
 {
+    log(LOG_DEBUG,"FD %d: NOOP command");
+    conn->is_finished = true;
     return TRANSACTION;
 }
 
@@ -449,7 +496,7 @@ stm_states stm_authorization_write(struct selector_key *key)
 
 void stm_transaction_arrival(stm_states state, struct selector_key *key)
 {
-    // Hacer
+    logf(LOG_DEBUG, "FD %d: stm_transaction_arrival", key->fd);
 }
 
 void stm_transaction_departure(stm_states state, struct selector_key *key)
