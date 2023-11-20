@@ -115,6 +115,9 @@ connection_data *pop3_init(void *data)
     log(LOG_DEBUG, "Initializing command data.");
     conn->user = NULL;
     conn->current_command[0] = '\0';
+    conn->command_length = 0;
+    conn->argument[0] = '\0';
+    conn->argument_length = 0;
     conn->is_finished = false;
     conn->command_error = false;
     

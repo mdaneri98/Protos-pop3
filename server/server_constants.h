@@ -14,7 +14,7 @@
 #define BUFFER_SIZE 512
 
 // LIST msj, donde msj puede tener hasta 40 bytes.
-#define COMMAND_LENGTH 4
+#define COMMAND_LENGTH 5
 #define MIN_COMMAND_LENGTH 3
 #define ARGUMENT_LENGTH 40
 

@@ -18,10 +18,12 @@ try_state try_write(const char* str, buffer* buff){
     size_t max = 0;
     uint8_t * ptr = buffer_write_ptr(buff,&max);
     size_t message_len = strlen(str);
+    /*
     if(max<message_len){
         //vuelvo a intentar despues
         return TRY_PENDING;
     }
+    */
     //Manda el mensaje parcialmente si no hay espacio
     memcpy(ptr, str, message_len);
 //    strncpy((char*)ptr, str, message_len);
@@ -53,7 +55,7 @@ stm_states user_handler(struct selector_key * key, connection_data* conn) {
                 conn->current_session.maildir[0] = '\0';
 
                 char* msj = "-ERR invalid user\r\n";
-                try_write(msj,&(conn->out_buff_object));
+                try_write(msj, &(conn->out_buff_object));
 
                 return AUTHORIZATION;
             }
@@ -198,7 +200,9 @@ stm_states read_command(struct selector_key * key, stm_states current_state) {
         /* event-type es modificado en pop3_parser. 
             Una vez que se termina de parsear el comando, se setea el tipo de evento en VALID_COMMAND o INVALID_COMMAND.
         */
+       logf(LOG_DEBUG, "FD %d: Current command: %s", key->fd, connection->current_command);
         if (event->type == VALID_COMMAND) {
+            logf(LOG_DEBUG, "FD %d: Valid command: %s", key->fd, connection->current_command);
             for (size_t j = 0; j < COMMAND_LENGTH; j++) {
                 struct command maybe_command = commands[j];
                 if (strcasecmp(maybe_command.name, connection->current_command) == 0) {
@@ -221,7 +225,7 @@ stm_states read_command(struct selector_key * key, stm_states current_state) {
             logf(LOG_DEBUG, "FD %d: Error. Invalid command for state", key->fd);
             return ERROR;
         } else if (event->type == INVALID_COMMAND) {
-            logf(LOG_DEBUG, "FD %d: Error. Invalid command", key->fd);
+            logf(LOG_DEBUG, "FD %d: Error. Invalid command: %s", key->fd, connection->current_command);
             bool saw_carriage_return = ptr[i] == '\r';
             while (i < read_bytes) {
                 char c = (char) buffer_read(&connection->in_buff_object);
@@ -250,11 +254,17 @@ stm_states write_command(struct selector_key * key, stm_states current_state) {
     if (buffer_can_read(&connection->out_buff_object)) {
         size_t write_bytes;
         ptr = (char *) buffer_read_ptr(&connection->out_buff_object, &write_bytes);
-        send(key->fd, ptr, write_bytes, MSG_NOSIGNAL);
+        ssize_t bytes_send = send(key->fd, ptr, write_bytes, MSG_NOSIGNAL);
+        buffer_read_adv(&connection->out_buff_object, bytes_send);
+
+        selector_set_interest_key(key, OP_READ);
     }
 
     return current_state;
 }
+
+
+// ------------------ Estados de la maquina de estados ------------------ //
 
 void stm_authorization_arrival(stm_states state, struct selector_key * key) {
 
@@ -265,8 +275,8 @@ void stm_authorization_departure(stm_states state, struct selector_key * key) {
     connection->last_state = state;
 }
 
-
 stm_states stm_authorization_read(struct selector_key * key) {
+    logf(LOG_DEBUG, "FD %d: stm_authorization_read", key->fd);
     return read_command(key, AUTHORIZATION);
 }
 
@@ -289,7 +299,7 @@ stm_states stm_authorization_write(struct selector_key * key){
 }
 
 void stm_transaction_arrival(stm_states state, struct selector_key * key){
-
+    // Hacer 
 }
 
 void stm_transaction_departure(stm_states state, struct selector_key * key){
