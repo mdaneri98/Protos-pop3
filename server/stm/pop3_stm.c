@@ -234,12 +234,15 @@ stm_states noop_handler(struct selector_key *key, connection_data *conn)
 {
     log(LOG_DEBUG,"FD %d: NOOP command");
     conn->is_finished = true;
+    char msj[100];
+    sprintf(msj, "+OK\r\n");
+    try_write(msj, &(conn->out_buff_object));
     return TRANSACTION;
 }
 
 stm_states rset_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG,"FD %d: RSET");
+    log(LOG_DEBUG,"RSET");
     size_t maildir_size = 0;
     for (size_t i = 0; i < conn->current_session.mail_count; i++) {
         conn->current_session.mails[i].deleted = false;
@@ -247,13 +250,22 @@ stm_states rset_handler(struct selector_key *key, connection_data *conn)
     }
     conn->current_session.maildir_size = maildir_size;
     char msj[100];
-    sprintf(msj, "+OK Reset state\r\n");
+    sprintf(msj, "+OK\r\n");
     try_write(msj, &(conn->out_buff_object));
     return TRANSACTION;
 }
 
 stm_states quit_handler(struct selector_key *key, connection_data *conn)
 {
+    log(LOG_DEBUG,"QUIT");
+    for (size_t i = 0; i < conn->current_session.mail_count; i++) {
+        if (conn->current_session.mails[i].deleted) {
+            remove(conn->current_session.mails[i].path);
+        }
+    }
+    char msj[100];
+    sprintf(msj, "+OK\r\n");
+    try_write(msj, &(conn->out_buff_object));
     return TRANSACTION;
 }
 
