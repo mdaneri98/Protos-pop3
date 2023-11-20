@@ -162,6 +162,16 @@ stm_states noop_handler(struct selector_key *key, connection_data *conn)
 
 stm_states rset_handler(struct selector_key *key, connection_data *conn)
 {
+    log(LOG_DEBUG,"FD %d: RSET");
+    size_t maildir_size = 0;
+    for (size_t i = 0; i < conn->current_session.mail_count; i++) {
+        conn->current_session.mails[i].deleted = false;
+        maildir_size += conn->current_session.mails[i].size;
+    }
+    conn->current_session.maildir_size = maildir_size;
+    char msj[100];
+    sprintf(msj, "+OK Reset state\r\n");
+    try_write(msj, &(conn->out_buff_object));
     return TRANSACTION;
 }
 
@@ -295,7 +305,7 @@ stm_states read_command(struct selector_key *key, stm_states current_state)
         if (event->type == VALID_COMMAND)
         {
             logf(LOG_DEBUG, "FD %d: Valid command: %s", key->fd, connection->current_command);
-            for (size_t j = 0; j < COMMAND_LENGTH; j++)
+            for (size_t j = 0; j < COMMAND_QTY; j++)
             {
                 struct command maybe_command = commands[j];
                 if (strcasecmp(maybe_command.name, connection->current_command) == 0)
