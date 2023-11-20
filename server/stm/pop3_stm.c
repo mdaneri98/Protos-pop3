@@ -102,12 +102,14 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
         conn->current_session.maildir[0] = '\0';
         strcat(conn->current_session.maildir, base_directory);
         strcat(conn->current_session.maildir, "/");
-        strcat(conn->current_session.maildir, conn->argument);
+        strcat(conn->current_session.maildir, conn->user->name);
         strcat(conn->current_session.maildir, "/cur");
 
         DIR *directory = opendir(conn->current_session.maildir);
         if (directory == NULL)
         {
+            logf(LOG_DEBUG, "FD %d: User %s doesn't have directory entry at %s.", key->fd, conn->user->name, conn->current_session.maildir);
+
             conn->command_error = true;
             conn->current_session.maildir[0] = '\0';
             conn->user->name[0] = '\0';
@@ -115,9 +117,9 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
             char *msj = "-ERR invalid user\r\n";
             try_write(msj, &(conn->out_buff_object));
 
-            logf(LOG_DEBUG, "FD %d: User %s doesn't have directory entry.", key->fd, conn->user->name);
             return AUTHORIZATION;
         }
+        logf(LOG_DEBUG, "FD %d: User %s has directory entry at %s.", key->fd, conn->user->name, conn->current_session.maildir);
         closedir(directory);
 
         logf(LOG_DEBUG, "FD %d: User %s logged_in", key->fd, conn->user->name);
