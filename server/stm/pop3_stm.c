@@ -85,7 +85,7 @@ stm_states pass_handler(struct selector_key * key, connection_data * conn) {
     struct users* users = conn->args->users;
     size_t users_count = conn->args->users_count;
 
-     for (size_t i = 0; i < users_count; i++) {
+    for (size_t i = 0; i < users_count; i++) {
         // Si el usuario existe, seteamos el maildir y el username en la sesion actual.
         if (strcmp(users[i].name, conn->argument) == 0) {
             char base_directory[PATH_SIZE];
@@ -147,7 +147,7 @@ struct command commands[] = {
         },
 };
 
-void server_ready(struct connection_data * conn){
+bool server_ready(struct connection_data * conn){
     char * msj = "+OK POP3 server ready\r\n";
 
     size_t n;
@@ -156,8 +156,10 @@ void server_ready(struct connection_data * conn){
         logf(LOG_DEBUG, "Writing message to out_buff: %s", msj);
         strncpy(ptr, msj, strlen(msj));
         buffer_write_adv(&conn->out_buff_object, (ssize_t) strlen(msj));
+        return true;
     } else {
-        log(LOG_ERROR, "Error writing message to out_buff");
+        log(LOG_DEBUG, "out_buffer is full. Can't write welcome message.");
+        return false;
     }
 }
 
@@ -252,9 +254,9 @@ stm_states write_command(struct selector_key * key, stm_states current_state) {
     char * ptr;
 
     if (buffer_can_read(&connection->out_buff_object)) {
-        size_t write_bytes;
-        ptr = (char *) buffer_read_ptr(&connection->out_buff_object, &write_bytes);
-        ssize_t bytes_send = send(key->fd, ptr, write_bytes, MSG_NOSIGNAL);
+        size_t bytes_to_send;
+        ptr = (char *) buffer_read_ptr(&connection->out_buff_object, &bytes_to_send);
+        ssize_t bytes_send = send(key->fd, ptr, bytes_to_send, MSG_NOSIGNAL);
         buffer_read_adv(&connection->out_buff_object, bytes_send);
 
         selector_set_interest_key(key, OP_READ);
@@ -289,10 +291,10 @@ stm_states stm_authorization_write(struct selector_key * key){
     // mandamos el mensaje de bienvenida.
     if (connection->last_state == -1) {
         logf(LOG_DEBUG, "FD %d: Sending welcome message", key->fd);
-        server_ready(connection);
-        connection->last_state = AUTHORIZATION;
-        selector_set_interest_key(key, OP_WRITE);
-        return AUTHORIZATION;
+        bool done = server_ready(connection);
+        if (done) {
+            connection->last_state = AUTHORIZATION;
+        }
     }
 
     return write_command(key, AUTHORIZATION);

@@ -47,20 +47,19 @@ struct state_definition stm_states_table[] = {
 #define CHAR_R '\r'
 #define CHAR_NL '\n'
 #define CHAR_SPACE ' '
-#define CHAR_ANY (1 << 9)
 
 static const struct parser_state_transition parser_command_state[] = {
     {.when = CHAR_SPACE, .dest = ARGUMENT, .act1 = parser_command_state_space},
     {.when = CHAR_R, .dest = END, .act1 = parser_command_state_carriage_return},
-    {.when = CHAR_ANY, .dest = COMMAND, .act1 = parser_command_state_any}};
+    {.when = ANY, .dest = COMMAND, .act1 = parser_command_state_any}};
 
 static const struct parser_state_transition parser_argument_state[] = {
     {.when = CHAR_R, .dest = END, .act1 = parser_argument_state_carriage_return},
-    {.when = CHAR_ANY, .dest = ARGUMENT, .act1 = parser_argument_state_any}};
+    {.when = ANY, .dest = ARGUMENT, .act1 = parser_argument_state_any}};
 
 static const struct parser_state_transition parser_end_state[] = {
     {.when = CHAR_NL, .dest = COMMAND, .act1 = parser_end_state_line_feed},
-    {.when = CHAR_ANY, .dest = COMMAND, .act1 = parser_end_state_any}};
+    {.when = ANY, .dest = COMMAND, .act1 = parser_end_state_any}};
 
 static const struct parser_state_transition *parser_state_table[] = {
     parser_command_state,

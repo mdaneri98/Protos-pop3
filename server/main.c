@@ -159,10 +159,10 @@ int main(const int argc, char **argv)
 
     // man 7 ip. no importa reportar nada si falla.
     log(LOG_DEBUG, "Setting SO_REUSEADDR on IPv4 socket");
-    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));   // en caso de abortar, reusar direccion y puerto
     log(LOG_DEBUG, "Setting IPV6_V6ONLY and SO_REUSEADDR on IPv6 socket");
     setsockopt(server_6, IPPROTO_IPV6, IPV6_V6ONLY, &(int){1}, sizeof(int));
-    setsockopt(server_6, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
+    setsockopt(server_6, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)); // en caso de abortar, reusar direccion y puerto
 
     // bind server sockets to port
     log(LOG_DEBUG, "Binding IPv4 socket");
