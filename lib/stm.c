@@ -3,14 +3,15 @@
  *         del selector.c
  */
 #include <stdlib.h>
+#include <stdio.h>
 #include "stm.h"
-
-#define N(x) (sizeof(x)/sizeof((x)[0]))
+#include "selector.h"
 
 void
 stm_init(struct state_machine *stm) {
-    // verificamos que los estados son correlativos, y que están bien asignados.
-    for(unsigned i = 0 ; i <= stm->max_state; i++) {
+    // verificamos que los estados son correlativos, y que están bien asignados
+    // Note: Aca había un <=, pero eso está mal, porque max_state es la cantidad, no el mas grande
+    for(unsigned i = 0 ; i < stm->max_state; i++) {
         if(i != stm->states[i].state) {
             abort();
         }
@@ -101,3 +102,8 @@ stm_state(struct state_machine *stm) {
     }
     return ret;
 }
+
+void stm_change_state(struct state_machine *stm, unsigned next, struct selector_key *key) {
+    jump(stm, next, key);
+}
+

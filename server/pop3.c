@@ -97,22 +97,28 @@ connection_data *pop3_init(void *data)
         return NULL;
     }
 
+    log(LOG_DEBUG, "Initializing connection structure");
     // Se inicializa la maquina de estados para el cliente
-    buffer_init(&conn->read_buff_object, BUFFER_SIZE, (uint8_t *)conn->read_buff);
-    buffer_init(&conn->write_buff_object, BUFFER_SIZE, (uint8_t *)conn->write_buff);
+    buffer_init(&conn->read_buff_object, BUFFER_SIZE, conn->read_buff);
+    buffer_init(&conn->write_buff_object, BUFFER_SIZE, conn->write_buff);
+    
+    log(LOG_DEBUG, "Initializing parser");
     conn->parser = parser_init(parser_no_classes(), &parser_definition);
-    conn->user = NULL;
+
+    log(LOG_DEBUG, "Initializing stm");
     conn->stm.states = stm_states_table;
     conn->stm.initial = AUTHORIZATION;
     conn->stm.max_state = STM_STATES_COUNT;
+    stm_init(&(conn->stm));
+    conn->last_state = -1;
 
+    log(LOG_DEBUG, "Initializing command data.");
+    conn->user = NULL;
     conn->current_command[0] = '\0';
     conn->is_finished = false;
     conn->command_error = false;
 
-    stm_init(&conn->stm);
-
-    conn->last_state = -1;
+    
     conn->args = (struct args *)data;
 
     log(LOG_DEBUG, "Finished initializing structure");

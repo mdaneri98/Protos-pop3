@@ -89,7 +89,7 @@ typedef struct connection_data
 
     struct parser *parser;
     struct state_machine stm;
-    stm_states last_state;
+    int last_state;
 
     struct session current_session;
 
