@@ -47,20 +47,19 @@ struct state_definition stm_states_table[] = {
 #define CHAR_R '\r'
 #define CHAR_NL '\n'
 #define CHAR_SPACE ' '
-#define CHAR_ANY (1 << 9)
 
 static const struct parser_state_transition parser_command_state[] = {
     {.when = CHAR_SPACE, .dest = ARGUMENT, .act1 = parser_command_state_space},
     {.when = CHAR_R, .dest = END, .act1 = parser_command_state_carriage_return},
-    {.when = CHAR_ANY, .dest = COMMAND, .act1 = parser_command_state_any}};
+    {.when = ANY, .dest = COMMAND, .act1 = parser_command_state_any}};
 
 static const struct parser_state_transition parser_argument_state[] = {
     {.when = CHAR_R, .dest = END, .act1 = parser_argument_state_carriage_return},
-    {.when = CHAR_ANY, .dest = ARGUMENT, .act1 = parser_argument_state_any}};
+    {.when = ANY, .dest = ARGUMENT, .act1 = parser_argument_state_any}};
 
 static const struct parser_state_transition parser_end_state[] = {
     {.when = CHAR_NL, .dest = COMMAND, .act1 = parser_end_state_line_feed},
-    {.when = CHAR_ANY, .dest = COMMAND, .act1 = parser_end_state_any}};
+    {.when = ANY, .dest = COMMAND, .act1 = parser_end_state_any}};
 
 static const struct parser_state_transition *parser_state_table[] = {
     parser_command_state,
@@ -101,7 +100,7 @@ connection_data *pop3_init(void *data)
     // Se inicializa la maquina de estados para el cliente
     buffer_init(&conn->in_buff_object, BUFFER_SIZE, conn->in_buff);
     buffer_init(&conn->out_buff_object, BUFFER_SIZE, conn->out_buff);
-    
+
     log(LOG_DEBUG, "Initializing parser");
     conn->parser = parser_init(parser_no_classes(), &parser_definition);
 
@@ -120,7 +119,7 @@ connection_data *pop3_init(void *data)
     conn->argument_length = 0;
     conn->is_finished = false;
     conn->command_error = false;
-    
+
     conn->args = (struct args *)data;
 
     log(LOG_DEBUG, "Finished initializing structure");
@@ -210,7 +209,7 @@ static void handle_read(struct selector_key *key)
     /* Indicamos que ocurrió el evento read.
         Se ejecuta la función 'on_read_ready' para el estado actual de la maquina de estados
     */
-    stm_handler_read(&((struct connection_data *)key->data)->stm, key);    
+    stm_handler_read(&((struct connection_data *)key->data)->stm, key);
 }
 
 static void handle_write(struct selector_key *key)
@@ -219,9 +218,6 @@ static void handle_write(struct selector_key *key)
         Se ejecuta la función 'on_write_ready' para el estado actual de la maquina de estados
     */
     stm_handler_write(&((struct connection_data *)key->data)->stm, key);
-
-
-    
 }
 
 static void handle_close(struct selector_key *key)

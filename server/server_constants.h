@@ -15,7 +15,7 @@
 
 // LIST msj, donde msj puede tener hasta 40 bytes.
 #define COMMAND_LENGTH 5
-#define MIN_COMMAND_LENGTH 3
+#define MIN_COMMAND_LENGTH 4
 #define ARGUMENT_LENGTH 40
 
 #define MAX_USERS 10
@@ -49,7 +49,8 @@ typedef enum
 {
     UNDEFINED,
     VALID_COMMAND,
-    INVALID_COMMAND
+    INVALID_COMMAND,
+    DEBUGUGU
 } parser_event_types;
 
 struct users
@@ -58,7 +59,6 @@ struct users
     char pass[USERNAME_SIZE];
     bool logged_in;
 };
-
 
 struct session
 {
@@ -108,6 +108,5 @@ struct mail
     bool deleted;
     size_t size;
 };
-
 
 #endif
