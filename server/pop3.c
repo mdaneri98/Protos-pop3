@@ -99,8 +99,8 @@ connection_data *pop3_init(void *data)
 
     log(LOG_DEBUG, "Initializing connection structure");
     // Se inicializa la maquina de estados para el cliente
-    buffer_init(&conn->read_buff_object, BUFFER_SIZE, conn->read_buff);
-    buffer_init(&conn->write_buff_object, BUFFER_SIZE, conn->write_buff);
+    buffer_init(&conn->in_buff_object, BUFFER_SIZE, conn->in_buff);
+    buffer_init(&conn->out_buff_object, BUFFER_SIZE, conn->out_buff);
     
     log(LOG_DEBUG, "Initializing parser");
     conn->parser = parser_init(parser_no_classes(), &parser_definition);
@@ -117,7 +117,6 @@ connection_data *pop3_init(void *data)
     conn->current_command[0] = '\0';
     conn->is_finished = false;
     conn->command_error = false;
-
     
     conn->args = (struct args *)data;
 

@@ -53,14 +53,14 @@ stm_states user_handler(struct selector_key * key, connection_data* conn) {
                 conn->current_session.maildir[0] = '\0';
 
                 char* msj = "-ERR invalid user\r\n";
-                try_write(msj,&(conn->write_buff_object));
+                try_write(msj,&(conn->out_buff_object));
 
                 return AUTHORIZATION;
             }
             closedir(directory);
 
             char* msj = "+OK valid user\r\n";
-            try_write(msj,&(conn->write_buff_object));
+            try_write(msj,&(conn->out_buff_object));
 
             strcpy(conn->current_session.username, conn->argument);
             conn->command_error = false;
@@ -69,7 +69,7 @@ stm_states user_handler(struct selector_key * key, connection_data* conn) {
     }
 
     char* msj = "-ERR invalid user\r\n";
-    try_write(msj,&(conn->write_buff_object));
+    try_write(msj,&(conn->out_buff_object));
 
     // Si el usuario no existe, seteamos el error en true.
     conn->command_error = true;
@@ -149,21 +149,21 @@ void server_ready(struct connection_data * conn){
     char * msj = "+OK POP3 server ready\r\n";
 
     size_t n;
-    char * ptr = (char *) buffer_write_ptr(&conn->write_buff_object, &n);
+    char * ptr = (char *) buffer_write_ptr(&conn->out_buff_object, &n);
     if (n >= strlen(msj)) {
-        conn->is_finished = true;
+        logf(LOG_DEBUG, "Writing message to out_buff: %s", msj);
         strncpy(ptr, msj, strlen(msj));
-        buffer_write_adv(&conn->write_buff_object, (ssize_t) strlen(msj));
-
+        buffer_write_adv(&conn->out_buff_object, (ssize_t) strlen(msj));
+    } else {
+        log(LOG_ERROR, "Error writing message to out_buff");
     }
-
 }
 
 stm_states stm_server_read(struct selector_key *key){
     connection_data * connection = (connection_data *) key->data;
     return connection->stm.current->state;
 /*
-    if(!buffer_can_read[&connection->read_buff_object]){
+    if(!buffer_can_read[&connection->in_buff_object]){
         
     }
 */
@@ -174,26 +174,26 @@ stm_states read_command(struct selector_key * key, stm_states current_state) {
     struct connection_data* connection = (struct connection_data*) key->data;
     char * ptr;
 
-    if (!buffer_can_read(&connection->read_buff_object)) {
+    if (!buffer_can_read(&connection->in_buff_object)) {
         size_t write_bytes;
 
         // Escribimos en el buffer de lectura.
-        ptr = (char *) buffer_write_ptr(&connection->read_buff_object, &write_bytes);
+        ptr = (char *) buffer_write_ptr(&connection->in_buff_object, &write_bytes);
         ssize_t n = recv(key->fd, ptr, write_bytes, 0);
         if (n == 0) {
             return QUIT;
         }
-        buffer_write_adv(&connection->read_buff_object, n);
+        buffer_write_adv(&connection->in_buff_object, n);
     }
     // Acá ya tenemos actualizado el buffer de lectura.
 
 
     size_t read_bytes;
-    ptr = (char *) buffer_read_ptr(&connection->read_buff_object, &read_bytes);
+    ptr = (char *) buffer_read_ptr(&connection->in_buff_object, &read_bytes);
     for (size_t i = 0; i < read_bytes; i++) {
         // Alimentamos el parser con lo leido.
         const struct parser_event * event = parser_feed(connection->parser, ptr[i], connection);
-        buffer_read_adv(&connection->read_buff_object, 1);
+        buffer_read_adv(&connection->in_buff_object, 1);
 
         /* event-type es modificado en pop3_parser. 
             Una vez que se termina de parsear el comando, se setea el tipo de evento en VALID_COMMAND o INVALID_COMMAND.
@@ -224,7 +224,7 @@ stm_states read_command(struct selector_key * key, stm_states current_state) {
             logf(LOG_DEBUG, "FD %d: Error. Invalid command", key->fd);
             bool saw_carriage_return = ptr[i] == '\r';
             while (i < read_bytes) {
-                char c = (char) buffer_read(&connection->read_buff_object);
+                char c = (char) buffer_read(&connection->in_buff_object);
                 if (c == '\r') {
                     saw_carriage_return = true;
                 } else if (c == '\n') {
@@ -247,60 +247,62 @@ stm_states write_command(struct selector_key * key, stm_states current_state) {
     connection_data* connection = (connection_data*) key->data;
     char * ptr;
 
-    if (buffer_can_read(&connection->write_buff_object)) {
+    if (buffer_can_read(&connection->out_buff_object)) {
         size_t write_bytes;
-        ptr = (char *) buffer_read_ptr(&connection->write_buff_object, &write_bytes);
+        ptr = (char *) buffer_read_ptr(&connection->out_buff_object, &write_bytes);
         send(key->fd, ptr, write_bytes, MSG_NOSIGNAL);
     }
-
 
     return current_state;
 }
 
 void stm_authorization_arrival(stm_states state, struct selector_key * key) {
-    connection_data* connection = (connection_data*) key->data;
-    connection->last_state = AUTHORIZATION;
+
 }
 
 void stm_authorization_departure(stm_states state, struct selector_key * key) {
     connection_data* connection = (connection_data*) key->data;
-    connection->last_state = AUTHORIZATION;
+    connection->last_state = state;
 }
+
 
 stm_states stm_authorization_read(struct selector_key * key) {
     return read_command(key, AUTHORIZATION);
 }
 
 stm_states stm_authorization_write(struct selector_key * key){
+    logf(LOG_DEBUG, "FD %d: stm_authorization_write", key->fd);
+
     connection_data* connection = (connection_data* ) key->data;
 
     // Si es la primera vez que estamos en el estado AUTHORIZATION,
     // mandamos el mensaje de bienvenida.
-    if ((int) connection->last_state == -1) {
+    if (connection->last_state == -1) {
+        logf(LOG_DEBUG, "FD %d: Sending welcome message", key->fd);
         server_ready(connection);
+        connection->last_state = AUTHORIZATION;
+        selector_set_interest_key(key, OP_WRITE);
         return AUTHORIZATION;
     }
 
     return write_command(key, AUTHORIZATION);
 }
 
-stm_states stm_transaction_arrival(stm_states state, struct selector_key * key){
-    connection_data * connection = (connection_data *) key->data;
-    return connection->stm.current->state;
+void stm_transaction_arrival(stm_states state, struct selector_key * key){
+
 }
 
-stm_states stm_transaction_departure(stm_states state, struct selector_key * key){
-    connection_data * connection = (connection_data *) key->data;
-    return connection->stm.current->state;
+void stm_transaction_departure(stm_states state, struct selector_key * key){
+    connection_data* connection = (connection_data*) key->data;
+    connection->last_state = state;
 }
 
 stm_states stm_transaction_read(struct selector_key * key) {
     return read_command(key, TRANSACTION);
 }
 
-stm_states stm_transaction_write(struct selector_key * key){
-    connection_data * connection = (connection_data *) key->data;
-    return connection->stm.current->state;
+stm_states stm_transaction_write(struct selector_key * key) {
+    return write_command(key, TRANSACTION);
 }
 
 stm_states stm_error_arrival(stm_states state, struct selector_key * key){

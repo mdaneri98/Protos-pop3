@@ -73,10 +73,10 @@ struct session
 typedef struct connection_data
 {
     int connection_fd;
-    uint8_t read_buff[BUFFER_SIZE];
-    uint8_t write_buff[BUFFER_SIZE];
-    buffer read_buff_object;
-    buffer write_buff_object;
+    uint8_t in_buff[BUFFER_SIZE];
+    uint8_t out_buff[BUFFER_SIZE];
+    buffer in_buff_object;
+    buffer out_buff_object;
     struct users *user;
     struct args *args;
 
