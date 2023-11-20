@@ -60,6 +60,7 @@ void parser_argument_state_carriage_return(struct parser_event *ret, uint8_t c, 
         ret->type = UNDEFINED;
         d->argument[d->argument_length] = '\0';
         d->argument_length += 1;
+        return;
     }
     ret->type = INVALID_COMMAND;
 }
