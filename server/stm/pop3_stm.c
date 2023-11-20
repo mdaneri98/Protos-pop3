@@ -155,6 +155,8 @@ stm_states dele_handler(struct selector_key *key, connection_data *conn)
 
 stm_states noop_handler(struct selector_key *key, connection_data *conn)
 {
+    log(LOG_DEBUG,"FD %d: NOOP command");
+    conn->is_finished = true;
     return TRANSACTION;
 }
 
