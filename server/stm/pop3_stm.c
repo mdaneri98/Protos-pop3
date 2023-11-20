@@ -156,18 +156,21 @@ stm_states stat_handler(struct selector_key *key, connection_data *conn)
 
 stm_states list_handler(struct selector_key *key, connection_data *conn)
 {
+    log(LOG_DEBUG, "FD %d: LIST command");
+
     if (conn->argument_length > 0)
     {
         char *ptr;
         long arg = strtol(conn->argument, &ptr, 10);
         if ((size_t)arg - 1 > conn->current_session.mail_count || ptr[0] != '\0')
         {
+            log(LOG_DEBUG, "FD %d: LIST FAILED");
             // INGRESAR MENSAJE DE ERROR
             return TRANSACTION;
         }
 
         char msg[BUFFER_SIZE];
-        sprintf(msg, "+OK %zu %zu", arg, conn->current_session.mails[arg - 1].size);
+        sprintf(msg, "+OK %zu %zu \r\n", arg, conn->current_session.mails[arg - 1].size);
         try_write(msg, &(conn->out_buff_object));
         return TRANSACTION;
     }
@@ -187,7 +190,6 @@ stm_states list_handler(struct selector_key *key, connection_data *conn)
         }
         index++;
     }
-
     return TRANSACTION;
 }
 
@@ -358,15 +360,9 @@ stm_states stm_server_read(struct selector_key *key)
 
 void clean_command(connection_data *connection)
 {
-    for (int i = 0; i <= (int)connection->command_length; i++)
-    {
-        connection->current_command[i] = '\0';
-    }
+    connection->current_command[0] = '\0';
     connection->command_length = 0;
-    for (int i = 0; i <= (int)connection->argument_length; i++)
-    {
-        connection->argument[i] = '\0';
-    }
+    connection->argument[0] = '\0';
     connection->argument_length = 0;
 }
 
@@ -401,8 +397,7 @@ stm_states read_command(struct selector_key *key, stm_states current_state)
         /* event-type es modificado en pop3_parser.
             Una vez que se termina de parsear el comando, se setea el tipo de evento en VALID_COMMAND o INVALID_COMMAND.
         */
-        logf(LOG_DEBUG, "FD %d: Current command: %s - Length: %d", key->fd, connection->current_command, (int)connection->command_length);
-        logf(LOG_DEBUG, "FD %d: Current arg: %s - Length: %d", key->fd, connection->argument, (int)connection->argument_length);
+        logf(LOG_DEBUG, "FD %d: Current command: %s - Length: %d        Current arg: %s - Length: %d", key->fd, connection->current_command, (int)connection->command_length, connection->argument, (int)connection->argument_length);
         logf(LOG_DEBUG, " event = %d", event->type);
         if (event->type == VALID_COMMAND)
         {
@@ -467,7 +462,6 @@ stm_states read_command(struct selector_key *key, stm_states current_state)
             return ERROR;
         }
     }
-    clean_command(connection);
     return current_state;
 }
 
