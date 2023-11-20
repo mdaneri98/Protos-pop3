@@ -127,37 +127,45 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
 
 stm_states stat_handler(struct selector_key *key, connection_data *conn)
 {
+    log(LOG_DEBUG, "FD %d: STAT command");
 
+    size_t mail_count = conn->current_session.mail_count;
+    size_t maildir_size = conn->current_session.maildir_size;
+
+    char msj[100];
+    sprintf(msj, "+OK %d %d\r\n", (int)mail_count, (int)maildir_size);
+    try_write(msj, &(conn->out_buff_object));
+    return TRANSACTION;
 }
 
 stm_states list_handler(struct selector_key *key, connection_data *conn)
 {
-
+    return TRANSACTION;
 }
 
 stm_states retr_handler(struct selector_key *key, connection_data *conn)
 {
-
+    return TRANSACTION;
 }
 
 stm_states dele_handler(struct selector_key *key, connection_data *conn)
 {
-
+    return TRANSACTION;
 }
 
 stm_states noop_handler(struct selector_key *key, connection_data *conn)
 {
-
+    return TRANSACTION;
 }
 
 stm_states rset_handler(struct selector_key *key, connection_data *conn)
 {
-
+    return TRANSACTION;
 }
 
 stm_states quit_handler(struct selector_key *key, connection_data *conn)
 {
-
+    return TRANSACTION;
 }
 
 typedef enum command_args
