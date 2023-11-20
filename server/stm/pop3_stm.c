@@ -157,6 +157,38 @@ stm_states stat_handler(struct selector_key *key, connection_data *conn)
 
 stm_states list_handler(struct selector_key *key, connection_data *conn)
 {
+    if (conn->argument_length > 0)
+    {
+        char *ptr;
+        long arg = strtol(conn->argument, &ptr, 10);
+        if ((size_t)arg - 1 > conn->current_session.mail_count || ptr[0] != '\0')
+        {
+            // INGRESAR MENSAJE DE ERROR
+            return TRANSACTION;
+        }
+
+        char msg[BUFFER_SIZE];
+        sprintf(msg, "+OK %zu %zu", arg, conn->current_session.mails[arg - 1].size);
+        try_write(msg, &(conn->out_buff_object));
+        return TRANSACTION;
+    }
+
+    char msg[10] = {0};
+    sprintf(msg, "+OK\r\n");
+    try_write(msg, &(conn->out_buff_object));
+
+    size_t index = 0;
+    while (index < conn->current_session.mail_count)
+    {
+        if (!conn->current_session.mails[index].deleted)
+        {
+            char mail_info[50];
+            sprintf(mail_info, "%ld %ld\r\n", index + 1, conn->current_session.mails[index].size);
+            try_write(mail_info, &(conn->out_buff_object));
+        }
+        index++;
+    }
+
     return TRANSACTION;
 }
 
@@ -208,16 +240,38 @@ stm_states noop_handler(struct selector_key *key, connection_data *conn)
 {
     log(LOG_DEBUG,"FD %d: NOOP command");
     conn->is_finished = true;
+    char msj[100];
+    sprintf(msj, "+OK\r\n");
+    try_write(msj, &(conn->out_buff_object));
     return TRANSACTION;
 }
 
 stm_states rset_handler(struct selector_key *key, connection_data *conn)
 {
+    log(LOG_DEBUG,"RSET");
+    size_t maildir_size = 0;
+    for (size_t i = 0; i < conn->current_session.mail_count; i++) {
+        conn->current_session.mails[i].deleted = false;
+        maildir_size += conn->current_session.mails[i].size;
+    }
+    conn->current_session.maildir_size = maildir_size;
+    char msj[100];
+    sprintf(msj, "+OK\r\n");
+    try_write(msj, &(conn->out_buff_object));
     return TRANSACTION;
 }
 
 stm_states quit_handler(struct selector_key *key, connection_data *conn)
 {
+    log(LOG_DEBUG,"QUIT");
+    for (size_t i = 0; i < conn->current_session.mail_count; i++) {
+        if (conn->current_session.mails[i].deleted) {
+            remove(conn->current_session.mails[i].path);
+        }
+    }
+    char msj[100];
+    sprintf(msj, "+OK\r\n");
+    try_write(msj, &(conn->out_buff_object));
     return TRANSACTION;
 }
 
@@ -243,28 +297,27 @@ struct command commands[] = {
      .arguments = REQUIRED,
      .handler = pass_handler},
 
-     {.name = "STAT",
+    {.name = "STAT",
      .arguments = EMPTY,
      .handler = stat_handler},
-     {.name = "LIST",
-    .arguments = OPTIONAL,
-    .handler = list_handler},
+    {.name = "LIST",
+     .arguments = OPTIONAL,
+     .handler = list_handler},
     {.name = "RETR",
-    .arguments = REQUIRED,
-    .handler = retr_handler},
+     .arguments = REQUIRED,
+     .handler = retr_handler},
     {.name = "DELE",
-    .arguments = REQUIRED,
-    .handler = dele_handler},
+     .arguments = REQUIRED,
+     .handler = dele_handler},
     {.name = "NOOP",
-    .arguments = EMPTY,
-    .handler = noop_handler},
+     .arguments = EMPTY,
+     .handler = noop_handler},
     {.name = "RSET",
-    .arguments = EMPTY,
-    .handler = rset_handler},
+     .arguments = EMPTY,
+     .handler = rset_handler},
     {.name = "QUIT",
-    .arguments = EMPTY,
-    .handler = quit_handler}
-};
+     .arguments = EMPTY,
+     .handler = quit_handler}};
 
 bool server_ready(struct connection_data *conn)
 {
@@ -276,9 +329,11 @@ bool server_ready(struct connection_data *conn)
     {
         logf(LOG_DEBUG, "Writing message to out_buff: %s", msj);
         strncpy(ptr, msj, strlen(msj));
-        buffer_write_adv(&conn->out_buff_object, (ssize_t) strlen(msj));
+        buffer_write_adv(&conn->out_buff_object, (ssize_t)strlen(msj));
         return true;
-    } else {
+    }
+    else
+    {
         log(LOG_DEBUG, "out_buffer is full. Can't write welcome message.");
         return false;
     }
@@ -346,7 +401,7 @@ stm_states read_command(struct selector_key *key, stm_states current_state)
         if (event->type == VALID_COMMAND)
         {
             logf(LOG_DEBUG, "FD %d: Valid command: %s", key->fd, connection->current_command);
-            for (size_t j = 0; j < COMMAND_LENGTH; j++)
+            for (size_t j = 0; j < COMMAND_QTY; j++)
             {
                 struct command maybe_command = commands[j];
                 if (strcasecmp(maybe_command.name, connection->current_command) == 0)
@@ -415,9 +470,10 @@ stm_states write_command(struct selector_key *key, stm_states current_state)
     connection_data *connection = (connection_data *)key->data;
     char *ptr;
 
-    if (buffer_can_read(&connection->out_buff_object)) {
+    if (buffer_can_read(&connection->out_buff_object))
+    {
         size_t bytes_to_send;
-        ptr = (char *) buffer_read_ptr(&connection->out_buff_object, &bytes_to_send);
+        ptr = (char *)buffer_read_ptr(&connection->out_buff_object, &bytes_to_send);
         ssize_t bytes_send = send(key->fd, ptr, bytes_to_send, MSG_NOSIGNAL);
         buffer_read_adv(&connection->out_buff_object, bytes_send);
 
@@ -457,7 +513,8 @@ stm_states stm_authorization_write(struct selector_key *key)
     {
         logf(LOG_DEBUG, "FD %d: Sending welcome message", key->fd);
         bool done = server_ready(connection);
-        if (done) {
+        if (done)
+        {
             connection->last_state = AUTHORIZATION;
         }
     }
