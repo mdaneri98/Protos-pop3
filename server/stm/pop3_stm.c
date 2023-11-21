@@ -607,16 +607,20 @@ stm_states stm_transaction_write(struct selector_key *key)
     return write_command(key, TRANSACTION);
 }
 
-stm_states stm_error_arrival(stm_states state, struct selector_key *key)
+void stm_error_arrival(stm_states state, struct selector_key *key)
 {
     connection_data *connection = (connection_data *)key->data;
-    return connection->stm.current->state;
+   // struct command current_command = connection->current_command;
+    //clear_parser_buffers(current_command);
+    //current_command->finished = true;
+    parser_reset(connection->parser);
+    selector_set_interest_key(key, OP_WRITE);
 }
 
-stm_states stm_error_departure(stm_states state, struct selector_key *key)
+void stm_error_departure(stm_states state, struct selector_key *key)
 {
     connection_data *connection = (connection_data *)key->data;
-    return connection->stm.current->state;
+    connection->last_state = state;
 }
 
 stm_states stm_error_read(struct selector_key *key)
@@ -627,8 +631,19 @@ stm_states stm_error_read(struct selector_key *key)
 
 stm_states stm_error_write(struct selector_key *key)
 {
+    char * message = "-ERR Unknown command.\r\n";
+
     connection_data *connection = (connection_data *)key->data;
-    return connection->stm.current->state;
+
+    size_t write_bytes;
+    char * ptr = (char *) buffer_write_ptr(&connection->out_buff_object, &write_bytes);
+    if (write_bytes >= strlen(message)) {
+        strncpy(ptr, message, strlen(message));
+        buffer_write_adv(&connection->out_buff_object, (ssize_t) strlen(message));
+        return connection->last_state;
+    }
+
+    return ERROR;
 }
 
 stm_states stm_quit_arrival(stm_states state, struct selector_key *key)
