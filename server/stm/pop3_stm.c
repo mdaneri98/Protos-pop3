@@ -310,40 +310,51 @@ typedef enum command_args
 
 struct command
 {
+    stm_states state;
     const char *name;
     command_args arguments;
     stm_states (*handler)(struct selector_key *, struct connection_data *);
 };
 
 struct command commands[] = {
-    {.name = "USER",
+    
+    {.state=AUTHORIZATION,
+    .name = "USER",
      .arguments = REQUIRED,
      .handler = user_handler},
-    {.name = "PASS",
+    {.state=AUTHORIZATION,
+    .name = "PASS",
      .arguments = REQUIRED,
      .handler = pass_handler},
-
-    {.name = "STAT",
+    {.state=TRANSACTION,
+    .name = "STAT",
      .arguments = EMPTY,
      .handler = stat_handler},
-    {.name = "LIST",
+    {.state=TRANSACTION,
+    .name = "LIST",
      .arguments = OPTIONAL,
      .handler = list_handler},
-    {.name = "RETR",
+    {.state=TRANSACTION,
+    .name = "RETR",
      .arguments = REQUIRED,
      .handler = retr_handler},
-    {.name = "DELE",
+    {.state=TRANSACTION,
+        .name = "DELE",
      .arguments = REQUIRED,
      .handler = dele_handler},
-    {.name = "NOOP",
+    {.state=TRANSACTION,
+        .name = "NOOP",
      .arguments = EMPTY,
      .handler = noop_handler},
-    {.name = "RSET",
+    {.state=TRANSACTION,
+        .name = "RSET",
      .arguments = EMPTY,
      .handler = rset_handler},
-    {.name = "QUIT",
+    {.state=TRANSACTION,
+        .name = "QUIT",
      .arguments = EMPTY,
-     .handler = quit_handler}};
+     .handler = quit_handler}
+     };
 
 bool server_ready(struct connection_data *conn)
 {
@@ -423,16 +434,14 @@ stm_states read_command(struct selector_key *key, stm_states current_state)
             for (size_t j = 0; j < COMMAND_QTY; j++)
             {
                 struct command maybe_command = commands[j];
-                if (strcasecmp(maybe_command.name, connection->current_command) == 0)
+                if (strcasecmp(maybe_command.name, connection->current_command) == 0 && maybe_command.state == current_state)
                 {
                     if ((maybe_command.arguments == REQUIRED && connection->argument_length > 0) ||
                         (maybe_command.arguments == EMPTY && connection->argument_length == 0) ||
                         (maybe_command.arguments == OPTIONAL))
                     {
-
                         // Ejecutamos el comando.
                         stm_states next_state = maybe_command.handler(key, connection);
-
                         // Vamos a escribir.
                         selector_set_interest_key(key, OP_WRITE);
 
