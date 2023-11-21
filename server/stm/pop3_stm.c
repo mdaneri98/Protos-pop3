@@ -579,6 +579,7 @@ void stm_transaction_arrival(stm_states state, struct selector_key *key)
         struct stat file_stat;
         if (stat(connection->current_session.mails[i].path, &file_stat) == 0)
         {
+            connection->current_session.mails[i].size = file_stat.st_size;
             connection->current_session.maildir_size += file_stat.st_size; // Acumula el tamaño del archivo
             connection->current_session.mail_count++;
         }
