@@ -271,7 +271,7 @@ stm_states noop_handler(struct selector_key *key, connection_data *conn)
 
 stm_states rset_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "RSET");
+    log(LOG_DEBUG, "FD %d: RSET command");
     size_t maildir_size = 0;
     for (size_t i = 0; i < conn->current_session.mail_count; i++)
     {
@@ -287,7 +287,7 @@ stm_states rset_handler(struct selector_key *key, connection_data *conn)
 
 stm_states quit_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "QUIT");
+    log(LOG_DEBUG, "FD %d: QUIT command");
     for (size_t i = 0; i < conn->current_session.mail_count; i++)
     {
         if (conn->current_session.mails[i].deleted)
@@ -296,6 +296,15 @@ stm_states quit_handler(struct selector_key *key, connection_data *conn)
         }
     }
     char msj[100];
+    sprintf(msj, "+OK\r\n");
+    try_write(msj, &(conn->out_buff_object));
+    return TRANSACTION;
+}
+
+stm_states capa_handler(struct selector_key *key, connection_data *conn)
+{
+    log(LOG_DEBUG, "FD %d: NOOP command");
+    char msj[10];
     sprintf(msj, "+OK\r\n");
     try_write(msj, &(conn->out_buff_object));
     return TRANSACTION;
@@ -317,44 +326,47 @@ struct command
 };
 
 struct command commands[] = {
-    
-    {.state=AUTHORIZATION,
-    .name = "USER",
+
+    {.state = AUTHORIZATION,
+     .name = "USER",
      .arguments = REQUIRED,
      .handler = user_handler},
-    {.state=AUTHORIZATION,
-    .name = "PASS",
+    {.state = AUTHORIZATION,
+     .name = "PASS",
      .arguments = REQUIRED,
      .handler = pass_handler},
-    {.state=TRANSACTION,
-    .name = "STAT",
+    {.state = TRANSACTION,
+     .name = "STAT",
      .arguments = EMPTY,
      .handler = stat_handler},
-    {.state=TRANSACTION,
-    .name = "LIST",
+    {.state = TRANSACTION,
+     .name = "LIST",
      .arguments = OPTIONAL,
      .handler = list_handler},
-    {.state=TRANSACTION,
-    .name = "RETR",
+    {.state = TRANSACTION,
+     .name = "RETR",
      .arguments = REQUIRED,
      .handler = retr_handler},
-    {.state=TRANSACTION,
-        .name = "DELE",
+    {.state = TRANSACTION,
+     .name = "DELE",
      .arguments = REQUIRED,
      .handler = dele_handler},
-    {.state=TRANSACTION,
-        .name = "NOOP",
+    {.state = TRANSACTION,
+     .name = "NOOP",
      .arguments = EMPTY,
      .handler = noop_handler},
-    {.state=TRANSACTION,
-        .name = "RSET",
+    {.state = TRANSACTION,
+     .name = "RSET",
      .arguments = EMPTY,
      .handler = rset_handler},
-    {.state=TRANSACTION,
-        .name = "QUIT",
+    {.state = TRANSACTION,
+     .name = "QUIT",
      .arguments = EMPTY,
-     .handler = quit_handler}
-     };
+     .handler = quit_handler},
+    {.state = TRANSACTION,
+     .name = "CAPA",
+     .arguments = EMPTY,
+     .handler = capa_handler}};
 
 bool server_ready(struct connection_data *conn)
 {
@@ -619,9 +631,9 @@ stm_states stm_transaction_write(struct selector_key *key)
 void stm_error_arrival(stm_states state, struct selector_key *key)
 {
     connection_data *connection = (connection_data *)key->data;
-   // struct command current_command = connection->current_command;
-    //clear_parser_buffers(current_command);
-    //current_command->finished = true;
+    // struct command current_command = connection->current_command;
+    // clear_parser_buffers(current_command);
+    // current_command->finished = true;
     parser_reset(connection->parser);
     selector_set_interest_key(key, OP_WRITE);
 }
@@ -640,15 +652,16 @@ stm_states stm_error_read(struct selector_key *key)
 
 stm_states stm_error_write(struct selector_key *key)
 {
-    char * message = "-ERR Unknown command.\r\n";
+    char *message = "-ERR Unknown command.\r\n";
 
     connection_data *connection = (connection_data *)key->data;
 
     size_t write_bytes;
-    char * ptr = (char *) buffer_write_ptr(&connection->out_buff_object, &write_bytes);
-    if (write_bytes >= strlen(message)) {
+    char *ptr = (char *)buffer_write_ptr(&connection->out_buff_object, &write_bytes);
+    if (write_bytes >= strlen(message))
+    {
         strncpy(ptr, message, strlen(message));
-        buffer_write_adv(&connection->out_buff_object, (ssize_t) strlen(message));
+        buffer_write_adv(&connection->out_buff_object, (ssize_t)strlen(message));
         return connection->last_state;
     }
 
