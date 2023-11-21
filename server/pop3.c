@@ -126,26 +126,6 @@ connection_data *pop3_init(void *data)
     return conn;
 }
 
-/*
- * Funcion para liberar memoria asociada a la conexión
- */
-void pop3_destroy(struct connection_data *connection)
-{
-    log(LOG_DEBUG, "Destroying pop3 state");
-    if (connection == NULL)
-    {
-        return;
-    }
-
-    parser_destroy(connection->parser);
-
-    logf(LOG_INFO, "Closing connection with fd %d", connection->connection_fd);
-    if (connection->connection_fd != -1)
-    {
-        close(connection->connection_fd);
-    }
-}
-
 void accept_pop_connection(struct selector_key *key)
 {
     connection_data *conn = NULL;
@@ -175,7 +155,6 @@ void accept_pop_connection(struct selector_key *key)
     {
         log(LOG_ERROR, "Error on pop3 create") goto fail;
     }
-
     conn->connection_fd = client_fd;
 
     logf(LOG_INFO, "Registering client with fd %d", client_fd);
@@ -195,14 +174,7 @@ fail:
         // cerramos el socket del cliente
         close(client_fd);
     }
-
-    // destuyo y libero la conexión
-    pop3_destroy(conn);
 }
-
-/*
-
-*/
 
 static void handle_read(struct selector_key *key)
 {
@@ -220,6 +192,13 @@ static void handle_write(struct selector_key *key)
     stm_handler_write(&((struct connection_data *)key->data)->stm, key);
 }
 
+/* Llamado al realizar QUIT o terminar la conexión. */
 static void handle_close(struct selector_key *key)
 {
+    connection_data *conn = key->data;
+
+    logf(LOG_INFO, "Closing connection with fd %d", conn->connection_fd);
+    parser_destroy(conn->parser);
+    free(conn->user);
+    free(conn);
 }

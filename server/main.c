@@ -257,6 +257,7 @@ finally:
         log(LOG_INFO, "Destroying selector");
         selector_destroy(selector);
     }
+    free(args);
     selector_close();
     if (server >= 0)
     {

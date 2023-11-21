@@ -154,6 +154,11 @@ stm_states stat_handler(struct selector_key *key, connection_data *conn)
     return TRANSACTION;
 }
 
+/*
+    LIST
+    RETR 1
+*/
+
 stm_states list_handler(struct selector_key *key, connection_data *conn)
 {
     log(LOG_DEBUG, "FD %d: LIST command");
@@ -216,6 +221,7 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
         logf(LOG_DEBUG, "FD %d: Error opening mail file with path %s", key->fd, mail_path);
         char *msj = "-ERR no such message\r\n";
         try_write(msj, &(conn->out_buff_object));
+        fclose(mail_file);
         return TRANSACTION;
     }
 
@@ -288,6 +294,8 @@ stm_states rset_handler(struct selector_key *key, connection_data *conn)
 stm_states quit_handler(struct selector_key *key, connection_data *conn)
 {
     log(LOG_DEBUG, "QUIT");
+
+    conn->current_session.requested_quit = true;
     for (size_t i = 0; i < conn->current_session.mail_count; i++)
     {
         if (conn->current_session.mails[i].deleted)
@@ -295,10 +303,12 @@ stm_states quit_handler(struct selector_key *key, connection_data *conn)
             remove(conn->current_session.mails[i].path);
         }
     }
+    free(conn->current_session.mails);
+
     char msj[100];
     sprintf(msj, "+OK\r\n");
     try_write(msj, &(conn->out_buff_object));
-    return TRANSACTION;
+    return AUTHORIZATION;
 }
 
 typedef enum command_args
@@ -655,16 +665,19 @@ stm_states stm_error_write(struct selector_key *key)
     return ERROR;
 }
 
-stm_states stm_quit_arrival(stm_states state, struct selector_key *key)
+void stm_quit_arrival(stm_states state, struct selector_key *key)
 {
     connection_data *connection = (connection_data *)key->data;
-    return connection->stm.current->state;
+
+    if (!connection->current_session.requested_quit) {
+        logf(LOG_DEBUG, "FD %d: Quit received", key->fd);
+        selector_unregister_fd(key->s, key->fd);
+    }
 }
 
-stm_states stm_quit_departure(stm_states state, struct selector_key *key)
+void stm_quit_departure(stm_states state, struct selector_key *key)
 {
-    connection_data *connection = (connection_data *)key->data;
-    return connection->stm.current->state;
+    abort();
 }
 
 stm_states stm_quit_read(struct selector_key *key)
