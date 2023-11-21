@@ -136,8 +136,10 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
         return TRANSACTION;
     }
 
-    logf(LOG_DEBUG, "FD %d: User %s password %s incorrect", key->fd, conn->user->name, conn->argument);
+    char *msj = "-ERR invalid password\r\n";
+    try_write(msj, &(conn->out_buff_object));
     conn->command_error = true;
+    logf(LOG_DEBUG, "FD %d: User %s password %s incorrect", key->fd, conn->user->name, conn->argument);
     return AUTHORIZATION;
 }
 
@@ -162,7 +164,6 @@ stm_states stat_handler(struct selector_key *key, connection_data *conn)
 stm_states list_handler(struct selector_key *key, connection_data *conn)
 {
     log(LOG_DEBUG, "FD %d: LIST command");
-
     if (conn->argument_length > 0)
     {
         char *ptr;
@@ -680,7 +681,8 @@ void stm_quit_arrival(stm_states state, struct selector_key *key)
 {
     connection_data *connection = (connection_data *)key->data;
 
-    if (!connection->current_session.requested_quit) {
+    if (!connection->current_session.requested_quit)
+    {
         logf(LOG_DEBUG, "FD %d: Quit received", key->fd);
         selector_unregister_fd(key->s, key->fd);
     }
