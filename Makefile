@@ -7,7 +7,7 @@ PARSER_DIR = parser
 STM_DIR = stm
 
 LIB_OBJS = $(LIB_DIR)/buffer.o $(LIB_DIR)/netutils.o $(LIB_DIR)/parser.o $(LIB_DIR)/selector.o $(LIB_DIR)/stm.o $(LIB_DIR)/logger/logger.o
-SERVER_OBJS = $(SERVER_DIR)/args/args.o $(SERVER_DIR)/parser/pop3_parser.o $(SERVER_DIR)/stm/pop3_stm.o $(SERVER_DIR)/pop3.o $(SERVER_DIR)/main.o 
+SERVER_OBJS = $(SERVER_DIR)/args/args.o $(SERVER_DIR)/parser/pop3_parser.o $(SERVER_DIR)/stm/pop3_stm.o $(SERVER_DIR)/pop3.o $(SERVER_DIR)/managment/managment.o $(SERVER_DIR)/main.o 
 CLIENT_OBJS = # Add your client .o files here if any
 ALL_OBJS = $(LIB_OBJS) $(SERVER_OBJS) $(CLIENT_OBJS)
 

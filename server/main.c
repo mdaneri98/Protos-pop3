@@ -19,6 +19,7 @@
 
 #include <unistd.h>
 
+#include "managment/managment.h"
 #include "../lib/buffer.h"
 #include "../lib/netutils.h"
 #include "../lib/logger/logger.h"
@@ -40,6 +41,46 @@ void sigterm_handler(const int signal)
 {
     printf("signal %d, cleaning up and exiting\n", signal);
     done = true;
+}
+
+int set_up_managment_server()
+{
+    const char* err_msg = NULL;
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;                // IPv4
+    addr.sin_addr.s_addr = htonl(INADDR_ANY); // Todas las interfaces (escucha por cualquier IP)
+    addr.sin_port = htons(args->client_port); // Client port
+
+    // Pasive server sockets
+    const int server = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (server < 0)
+    {
+        err_msg = "unable to create IPv4 managment socket";
+        goto finally;
+    }
+
+    // bind server sockets to port
+    logf(LOG_DEBUG, "Binding IPv4 managment socket at port %d", args->client_port);
+    if (bind(server, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+    {
+        err_msg = "unable to bind socket";
+        goto finally;
+    }
+    
+    return server;
+    
+finally:
+    if (err_msg)
+    {
+        logf(LOG_ERROR, "%s: %s", err_msg, strerror(errno));
+    }
+    if (server >= 0)
+    {
+        close(server);
+    }
+    return -1;
 }
 
 int main(const int argc, char **argv)
@@ -124,6 +165,8 @@ int main(const int argc, char **argv)
     // No hacer buffering en la salida estándar.
     log(LOG_DEBUG, "Removing buffering to stdout");
     setvbuf(stdout, NULL, _IONBF, 0);
+
+    // ------------------ Inicialización del servidor ------------------ //
 
     // Address para hacer el bind del socket.
     // Creamos para el servidor con IPv4 y IPv6, mismo puerto.
@@ -236,9 +279,30 @@ int main(const int argc, char **argv)
         goto finally;
     }
 
-    for (; !done;)
+    // ------------------ Inicialización del managment ------------------ //
+    const fd_handler client_handler = {
+        .handle_read = accept_managment_connection,
+        .handle_write = NULL,
+        .handle_close = NULL,
+    };
+
+    int client_socket = -1;
+    log(LOG_INFO, "Setting up managment server")
+    if ((client_socket = set_up_managment_server()) < 0)
     {
-        err_msg = NULL;
+        err_msg = "unable to set up managment server";
+        goto finally;
+    }
+
+    logf(LOG_DEBUG, "Registering IPv4 managment server fd: %d", client_socket) if (SELECTOR_SUCCESS != selector_register(selector, client_socket, &client_handler, OP_READ, args))
+    {
+        err_msg = "unable to register server fd for IPv4 managment socket.";
+        goto finally;
+    }
+
+    // ------------------ Loop select ------------------ //
+    for (; !done; )
+    {
         ss = selector_select(selector);
         if (ss != SELECTOR_SUCCESS)
         {
