@@ -13,7 +13,7 @@
 
 #define CLIENT_BUFFER_SIZE 512
 #define SPLIT_TOKEN '&'
-
+/*
 struct request {
     char *command;
     char *args;
@@ -24,7 +24,7 @@ static struct command {
     void (*action)(struct request *request);
 };
 
-static command commands[] = {
+static struct command commands[] = {
         {
             .name = "add-user",
             .action = add_user_action
@@ -80,11 +80,13 @@ static struct request* parse_request(char *buffer, ssize_t numBytesRcvd) {
     for (int i = 0; i < sizeof(commands) / sizeof(commands[0]); i++) {
         if (strcmp(commands[i].name, command) == 0) {
             commands[i].action(&request);
-            return;
+            return NULL;
         }
     }
 
     logf(LOG_ERROR, "Command %s not found", command);
+
+    return NULL;
 }
 
 void send_response(struct selector_key* key, char* response, struct sockaddr_storage clntAddr) {
@@ -96,8 +98,14 @@ void send_response(struct selector_key* key, char* response, struct sockaddr_sto
     }
   
 }
+*/
 
-/* Selector_key hace referencia directamente al del servidor UDP. no hay conexión. */
+void accept_managment_connection(struct selector_key *key) {
+    
+}
+
+/*
+// Selector_key hace referencia directamente al del servidor UDP. no hay conexión.
 void accept_managment_connection(struct selector_key *key)
 {
     struct sockaddr_storage clntAddr; 			// Client address
@@ -117,10 +125,8 @@ void accept_managment_connection(struct selector_key *key)
     log(LOG_DEBUG, "Received message from client");
     parse_request(read_buffer, numBytesRcvd);
     
-    char* 
-
-
-
+    
 }
 
 
+*/

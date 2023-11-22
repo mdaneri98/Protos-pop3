@@ -23,14 +23,7 @@ static unsigned short port(const char * s) {
      return (unsigned short) sl;
 }
 
-static void version(void) {
-    fprintf(
-            stdout,
-            "POP3 Server v1.0\n"
-            "ITBA - 72.07 Protocolos de Comunicación 20232Q\n\n");
-}
-
-static void user(char * s, struct users * user) {
+static void set_add_user(char * s, struct argument* argument) {
     char * p = strchr(s, ':');
     if (p == NULL) {
         fprintf(stderr, "Password not found\n");
@@ -38,8 +31,37 @@ static void user(char * s, struct users * user) {
     } else {
         *p = '\0';
         p++;
-        strcpy(user->name, s);
-        strcpy(user->pass, p);
+        strcpy(argument->name, "add-user");
+        strcpy(argument->name, s);
+        strcpy(argument->value, p);
+    }
+}
+
+static void set_token(char * s, struct argument* argument) {
+    char * p = strchr(s, ':');
+    if (p == NULL) {
+        fprintf(stderr, "Token value not found\n");
+        exit(1);
+    } else {
+        *p = '\0';
+        p++;
+        strcpy(argument->name, "token");
+        strcpy(argument->key, s);
+        strcpy(argument->value, p);
+    }
+}
+
+static void set_change_pass(char * s, struct argument* argument) {
+    char * p = strchr(s, ':');
+    if (p == NULL) {
+        fprintf(stderr, "Password value not found\n");
+        exit(1);
+    } else {
+        *p = '\0';
+        p++;
+        strcpy(argument->name, "change-pass");
+        strcpy(argument->key, s);
+        strcpy(argument->value, p);
     }
 }
 
@@ -109,44 +131,53 @@ void parse_args(const int argc, char **argv, struct args * args) {
                 usage(argv[0]);
                 break;
             case 'P':
-                args->client_port = port(optarg);
+                args->server_port = port(optarg);
                 break;
             case 't':
                 if(strlen(optarg) != CLIENT_TOKEN_LENGTH) {
                     fprintf(stderr, "Token invalid. Must be six alphanumerical characters long: %s.\n", optarg);
                     exit(1);
                 }
-                strcpy(args->token, optarg);
+                set_token(optarg, &args->arguments[TOKEN]);
+                args->arguments_count++;
                 break;
             case 'v':
-                version();
+                strcpy(args->arguments[VERSION].name, "version");
+                args->arguments_count++;
                 break;
             case 'u':
-                //TODO checkear cantidad de usarios actuales y el maximo
-                strcpy(args->new_user, optarg);
-                strcpy(args->new_pass, optarg);
+                set_add_user(optarg, &args->arguments[ADD_USER]);
+                args->arguments_count++;
                 break;
             case 'p':
-                strcpy(args->change_user, optarg);
-                strcpy(args->change_pass, optarg);
+                set_change_pass(optarg, &args->arguments[CHANGE_PASS]);
+                args->arguments_count++;
                 break;
             case 'r':
-                strcpy(args->remove_user, optarg);
+                strcpy(args->arguments[REMOVE_USER].name, "remove-user");
+                strcpy(args->arguments[REMOVE_USER].key, optarg);
+                args->arguments_count++;
                 break;
             case 'g':
-
+                strcpy(args->arguments[GET_MAX_MAILS].name, "get-max-mails");
+                args->arguments_count++;
                 break;
             case 's':
-                args->new_max_mails = optarg;
+                strcpy(args->arguments[SET_MAX_MAILS].name, "set-max-mails");
+                strcpy(args->arguments[SET_MAX_MAILS].key, optarg);
+                args->arguments_count++;
                 break;
             case 'i':
-
+                strcpy(args->arguments[SET_MAX_MAILS].name, "stat-historic-connections");
+                args->arguments_count++;
                 break;
             case 'c':
-
+                strcpy(args->arguments[SET_MAX_MAILS].name, "stat-current-connections");
+                args->arguments_count++;
                 break;
             case 'b':
-
+                strcpy(args->arguments[SET_MAX_MAILS].name, "stat-bytes-transferred");
+                args->arguments_count++;
                 break;
             default:
                 fprintf(stderr, "Unknown argument %d.\n", c);
@@ -154,7 +185,7 @@ void parse_args(const int argc, char **argv, struct args * args) {
         }
 
     }
-    if (args->token[0] == '\0') {
+    if (args->arguments[TOKEN].name[0] == '\0') {
         fprintf(stderr, "Token argument must be provided.\n");
         exit(1);
     }

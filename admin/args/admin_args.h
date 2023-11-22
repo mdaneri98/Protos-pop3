@@ -7,34 +7,37 @@
 
 typedef enum args_type {
     HELP,
-    CONFIG_SERVER_PORT,
-    TOKEN,
-    VERSION,
     ADD_USER,
     CHANGE_PASS,
     REMOVE_USER,
-    NEW_MAX_MAILS
+    CONFIG_SERVER_PORT,
+    TOKEN,
+    VERSION,
+    GET_MAX_MAILS,
+    SET_MAX_MAILS,
+    STAT_HISTORIC_CONNECTIONS,
+    STAT_CURRENT_CONNECTIONS,
+    STAT_BYTES_TRANSFERRED
 } args_type;
 
+
+
+struct argument {
+    char name[DEFAULT_SIZE];
+    char key[DEFAULT_SIZE];
+    char value[DEFAULT_SIZE];
+
+    //No las usamos todavía.
+    bool hasKey;
+    bool hasValue;
+    bool is_active;
+};
+
 struct args {
-    // Si la posición del type está en 1 => Se guardo tal argumento.
-    args_type types[8];
+    struct argument arguments[MAX_ARGUMENTS];
+    size_t arguments_count;
 
-    unsigned short client_port;
-    char token[CLIENT_TOKEN_LENGTH + 1];
-    
-    
-
-    char new_user[USERNAME_SIZE];
-    char new_pass[USERNAME_SIZE];
-
-    char change_user[USERNAME_SIZE];
-    char change_pass[USERNAME_SIZE];
-
-    char remove_user[USERNAME_SIZE];
-
-    unsigned int new_max_mails;
-    
+    unsigned short server_port;
 };
 
 void parse_args(const int argc, char **argv, struct args * args);
