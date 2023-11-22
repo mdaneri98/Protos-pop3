@@ -71,7 +71,7 @@ usage(const char * progname) {
         "   --remove-user <user>\n"
         "   -r <user>                        Remove a user from the server.\n\n"
         "   --get-max-mails \n"
-        "   -g <user>                        Get the maximum number of mails.\n\n"
+        "   -g                              Get the maximum number of mails.\n\n"
         "   --set-max-mails <number>\n"
         "   -s <number>               Set the maximum number of mails.\n\n"
         "   --stat-historic-connections\n"

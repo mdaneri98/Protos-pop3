@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include <strings.h>
 #include <errno.h>
 #include "../args/args.h"
@@ -14,44 +15,134 @@
 #define CLIENT_BUFFER_SIZE 512
 #define SPLIT_TOKEN '&'
 
-/*
-struct request {
-    char *command;
-    char *args;
-};
+extern struct args *args;
 
-static struct command {
+
+struct command {
     char *name;
-    void (*action)(struct request *request);
+    bool (*action)(char* out_buffer, struct argument* argument);
 };
 
 
-void add_user_action() {
+bool add_user_action(char* out_buffer, struct argument* argument) {
+    log(LOG_DEBUG, "Client Request: Add User");
 
+    if (args->users_count == MAX_USERS) {
+        strcpy(out_buffer, "-ERR. Maxium amount of users reached. ;");
+        return false;
+    }
+
+    if (argument->key[0] == '\0' || argument->value[0] == '\0') {
+        strcpy(out_buffer, "-ERR. User or password not given. ;");
+        return false;
+    }
+
+    strcpy(out_buffer, "OK+ Added new user. ;");
+    strcpy(args->users[args->users_count].name, argument->key);
+    strcpy(args->users[args->users_count].pass, argument->value);
+    args->users_count++;
+
+    return true;
+}
+bool remove_user_action(char* out_buffer, struct argument* argument) {
+    log(LOG_DEBUG, "Client Request: Remove User");
+
+    if (args->users_count == 0 || argument->key[0] == '\0') {
+        strcpy(out_buffer, "-ERR. Can't remove user. ;");
+        return false;
+    }
+
+    for (int i = 0; i < args->users_count; i++)
+    {
+        if (strcmp(args->users[i].name, argument->key) == 0)
+        {
+            strcpy(out_buffer, "OK+ Removed user. ;");
+            strcpy(args->users[i].name, "");
+            break;
+        }
+    }
+    args->users_count--;
+
+    return true;
 }
 
-void change_pass_action() {
-
+bool config_server_port_action(char* out_buffer, struct argument* argument) {
+    return true;
 }
 
-void get_max_mails_action() {
-
+bool token_action(char* out_buffer, struct argument* argument) {
+    log(LOG_DEBUG, "Client Request: Token validation");
+    // Nothing to do.
+    return true;
 }
 
-void set_max_mails_action() {
+bool change_pass_action(char* out_buffer, struct argument* argument) {
+     log(LOG_DEBUG, "Client Request: Change password");
 
+    if (args->users_count == 0 || argument->key[0] == '\0' || argument->value[0] == '\0') {
+        strcpy(out_buffer, "-ERR. Can change user password. ;");
+        return false;
+    }
+
+    for (int i = 0; i < args->users_count; i++)
+    {
+        if (strcmp(args->users[i].name, argument->key) == 0)
+        {
+            strcpy(out_buffer, "OK+ Password changed. ;");
+            strcpy(args->users[i].pass, argument->value);
+            break;
+        }
+    }
+    return true;
 }
 
-void stat_historic_connections_action() {
-
+bool version_action(char* out_buffer, struct argument* argument) {
+    strcpy(
+            out_buffer,
+            "OK+ \nPOP3 Server v1.0 | ITBA - 72.07 Protocolos de Comunicación 2023 2Q ;"
+    );
+    return true;
 }
 
-void stat_current_connections_action() {
+bool get_max_mails_action(char* out_buffer, struct argument* argument) {
+    log(LOG_DEBUG, "Client Request: Get max mails");
 
+    char msj[25];
+    sprintf(msj, "OK+ Max mails: %d ;", (int) args->max_mails);
+    strcpy(out_buffer, msj);
+
+    return true;
 }
 
-void stat_bytes_transferred_action() {
+bool set_max_mails_action(char* out_buffer, struct argument* argument) {
+    log(LOG_DEBUG, "Client Request: Get max mails");
 
+    if (argument->key[0] == '\0') {
+        strcpy(out_buffer, "-ERR. Can't set max mails. ;");
+        return false;
+    }
+
+    args->max_mails = atoi(argument->key);
+    if (args->max_mails > 0)
+    {
+        strcpy(out_buffer, "OK+ Max mails changed. ;");
+    } else {
+        strcpy(out_buffer, "-ERR. Can't set max mails. ;");
+        return false;
+    }
+    return true;
+}
+
+bool stat_historic_connections_action(char* out_buffer, struct argument* argument) {
+    return true;
+}
+
+bool stat_current_connections_action(char* out_buffer, struct argument* argument) {
+    return true;
+}
+
+bool stat_bytes_transferred_action(char* out_buffer, struct argument* argument) {
+    return true;
 }
 
 static struct command commands[] = {
@@ -62,6 +153,22 @@ static struct command commands[] = {
         {
             .name = "change-pass",
             .action = change_pass_action
+        },
+        {
+            .name = "remove-user",
+            .action = remove_user_action
+        },
+        {
+            .name = "config-server-port",
+            .action = config_server_port_action
+        },
+        {
+            .name = "token",
+            .action = token_action
+        },
+        {
+            .name = "version",
+            .action = version_action
         },
         {
             .name = "get-max-mails",
@@ -83,7 +190,7 @@ static struct command commands[] = {
             .name = "stat-bytes-transferred",
             .action = stat_bytes_transferred_action
         }
-};*/
+};
 
 static struct argument* parse_request(char *buffer, ssize_t numBytesRcvd) {
     struct argument* argument = malloc(sizeof(struct argument));
@@ -96,54 +203,52 @@ static struct argument* parse_request(char *buffer, ssize_t numBytesRcvd) {
 
     /* token exampleName|exampleKey:exampleValue */
 
-    char* next_token;
-    // Dividir la cadena por espacios para obtener el token.
-    char* part = strtok_r(buffer, " ", &next_token);
-    if (part != NULL) {
-        strcpy(argument->token, part);
+    /* Formato esperado: token valordeltoken CommandName|Key:Value */
+    char *next_token;
+    char *part = strtok_r(buffer, " ", &next_token);
 
-        // Dividir la siguiente parte por | para obtener el nombre.
-        part = strtok_r(NULL, "|", &next_token);
+    // Procesar la palabra 'token'
+    if (part != NULL && strcmp(part, "token") == 0) {
+        // Procesar el valor del token
+        part = strtok_r(NULL, " ", &next_token);
         if (part != NULL) {
-            strcpy(argument->name, part);
+            strncpy(argument->token, part, sizeof(argument->token) - 1);
 
-            // Dividir la siguiente parte por : para obtener la clave y el valor.
-            part = strtok_r(NULL, ":", &next_token);
+            // Procesar el nombre del comando
+            part = strtok_r(NULL, "|", &next_token);
             if (part != NULL) {
-                strcpy(argument->key, part);
-                // El valor es lo que queda después de la clave.
-                char* p = strtok_r(NULL, "", &next_token);
-                strcpy(argument->value, p);
+                strncpy(argument->name, part, sizeof(argument->name) - 1);
+
+                // Procesar la clave y el valor
+                part = strtok_r(NULL, ":", &next_token);
+                if (part != NULL) {
+                    strncpy(argument->key, part, sizeof(argument->key) - 1);
+
+                    // El valor es lo que queda después de la clave
+                    part = strtok_r(NULL, "", &next_token);
+                    if (part != NULL) {
+                        strncpy(argument->value, part, sizeof(argument->value) - 1);
+                    }
+                }
             }
         }
     }
-/*
-    // Manejar valores NULL o cadenas vacías asignando valores predeterminados.
-    if (argument->key == NULL || strcmp(argument->key, "") == 0) argument->key = "default_key";
-    if (argument->value == NULL || strcmp(argument->value, "") == 0) argument->value = "default_value";
-*/
+
     return argument;
 }
 
-void send_response(struct selector_key* key, char* response, struct sockaddr_storage clntAddr) {
-    // Send received datagram back to the client
-    ssize_t numBytesSent = sendto(key->fd, response, strlen(response), 0, (struct sockaddr *) &clntAddr, sizeof(clntAddr));
-    if (numBytesSent < 0)
-    {
-        log(LOG_ERROR, "sendto() failed");
-    }
-  
-}
-
 // Selector_key hace referencia directamente al del servidor UDP. no hay conexión.
-void accept_managment_connection(struct selector_key *key)
+void receive_managment_message(struct selector_key *key)
 {
+    // Alias
+    struct args* global_args = args;
+
     struct sockaddr_storage clntAddr; 			// Client address
     // Set Length of client address structure (in-out parameter)
     socklen_t clntAddrLen = sizeof(clntAddr);
 
     char read_buffer[CLIENT_BUFFER_SIZE] = {0};
-    //char write_buffer[CLIENT_BUFFER_SIZE] = {0};
+    char write_buffer[CLIENT_BUFFER_SIZE] = {0};
 
     errno = 0;
     ssize_t numBytesRcvd = recvfrom(key->fd, read_buffer, CLIENT_BUFFER_SIZE, 0, (struct sockaddr *) &clntAddr, &clntAddrLen);
@@ -154,7 +259,26 @@ void accept_managment_connection(struct selector_key *key)
     }
 
     log(LOG_DEBUG, "Received message from client");
-    parse_request(read_buffer, numBytesRcvd);
-    
+    struct argument* arg = parse_request(read_buffer, numBytesRcvd);
+
+    if (strcmp(global_args->token, arg->token) != 0)
+    {
+        logf(LOG_DEBUG, "Invalid token %s[CLIENT] != %s[SERVER]", arg->token, global_args->token);
+        strcpy(write_buffer, "-ERR. Invalid token ;");
+        goto send;
+    }
+
+
+    for (int i = 0; i < MAX_ARGUMENTS; i++) {
+        if (strcmp(arg->name, commands[i].name) == 0)
+        {
+            logf(LOG_DEBUG, "Executing command %s\n", commands[i].name);
+            commands[i].action(write_buffer, arg);
+            break;
+        }
+    }
+
+send:
+    sendto(key->fd, write_buffer, strlen(write_buffer), 0, (struct sockaddr *) &clntAddr, clntAddrLen);
     
 }

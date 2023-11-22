@@ -19,7 +19,7 @@ static void handle_read(struct selector_key *key);
 static void handle_write(struct selector_key *key);
 static void handle_close(struct selector_key *key);
 
-extern struct args args;
+//extern struct args* args;
 // extern struct stats stats;
 
 struct state_definition stm_states_table[] = {

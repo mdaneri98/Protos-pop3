@@ -91,10 +91,6 @@ int main(const int argc, char **argv)
             continue;
         }
 
-        printf("Name: %s\n", args->arguments[i].name);
-        printf("Key: %s\n", args->arguments[i].key);
-        printf("Value: %s\n", args->arguments[i].value);
-
         logf(LOG_DEBUG, "Argument %d is %s", i, args->arguments[i].name);
        
         sprintf(
@@ -111,10 +107,11 @@ int main(const int argc, char **argv)
             printf("%s: Unable to send request\n\n", args->arguments[i].name);
         }
 
-        char response[DEFAULT_SIZE];
+        char response[DEFAULT_SIZE] = {0};
         log(LOG_DEBUG, "Receiving\n");
-        if (recvfrom(client_socket, response, sizeof(response), 0, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
-            printf("%s: Server did not respond %s\n\n", args->arguments[i].name);
+        socklen_t server_addr_len = sizeof(server_addr);
+        if (recvfrom(client_socket, response, sizeof(response), 0, (struct sockaddr *) &server_addr, &server_addr_len) < 0) {
+            printf("%s: Server did not respond.\n\n", args->arguments[i].name);
             continue;
         }
         

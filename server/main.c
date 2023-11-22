@@ -281,7 +281,7 @@ int main(const int argc, char **argv)
 
     // ------------------ Inicialización del managment ------------------ //
     const fd_handler client_handler = {
-        .handle_read = accept_managment_connection,
+        .handle_read = receive_managment_message,
         .handle_write = NULL,
         .handle_close = NULL,
     };

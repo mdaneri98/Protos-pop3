@@ -11,7 +11,7 @@ struct args {
     char mail_directory[PATH_SIZE];
     size_t max_mails;
     struct users users[MAX_USERS];
-    size_t users_count;
+    int users_count;
 };
 
 void parse_args(const int argc, char **argv, struct args * args);

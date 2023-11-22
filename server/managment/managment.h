@@ -5,7 +5,7 @@
 #include "../../lib/selector.h"
 
 #define DEFAULT_SIZE 256
-#define MAX_ARGUMENTS 12
+#define MAX_ARGUMENTS 11
 
 typedef enum args_type {
     HELP,
@@ -37,7 +37,7 @@ struct argument {
     bool is_active;
 };
 
-void accept_managment_connection(struct selector_key *key);
+void receive_managment_message(struct selector_key *key);
 
 
 #endif
