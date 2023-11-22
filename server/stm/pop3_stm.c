@@ -312,11 +312,11 @@ stm_states quit_handler(struct selector_key *key, connection_data *conn)
 
 stm_states capa_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "FD %d: NOOP command");
-    char msj[10];
-    sprintf(msj, "+OK\r\n");
+    log(LOG_DEBUG, "FD %d: CAPA command");
+    char msj[25];
+    sprintf(msj, "+OK\r\nUSER\r\nPIPELINING\r\n");
     try_write(msj, &(conn->out_buff_object));
-    return TRANSACTION;
+    return conn->stm.current->state;
 }
 
 typedef enum command_args
@@ -344,6 +344,14 @@ struct command commands[] = {
      .name = "PASS",
      .arguments = REQUIRED,
      .handler = pass_handler},
+    {.state = AUTHORIZATION,
+     .name = "QUIT",
+     .arguments = EMPTY,
+     .handler = quit_handler},
+    {.state = AUTHORIZATION,
+     .name = "CAPA",
+     .arguments = EMPTY,
+     .handler = capa_handler},
     {.state = TRANSACTION,
      .name = "STAT",
      .arguments = EMPTY,
