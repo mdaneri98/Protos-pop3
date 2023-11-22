@@ -12,4 +12,10 @@
 
 #define CLIENT_TOKEN_LENGTH 6
 
+#define DEFAULT_SIZE 256
 
+struct users
+{
+    char name[DEFAULT_SIZE];
+    char pass[DEFAULT_SIZE];
+};

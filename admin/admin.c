@@ -4,7 +4,9 @@
 #include <netinet/in.h>
 #include "args/admin_args.h"
 #include <sys/socket.h>
+#include "../lib/logger/logger.h"
 #include <sys/time.h>
+#include <errno.h>
 
 
 #define PORT 1024
@@ -69,7 +71,7 @@ int main(const int argc, char **argv)
 
     int ret = 0;
     
-    int server_socket=set_up_managment_server();
+    int server_socket = set_up_managment_server();
 
     // Opciones de configuracion del selector
     // Decimos que usamos sigalarm para los trabajos bloqueantes (no nos interesa)
@@ -82,13 +84,18 @@ int main(const int argc, char **argv)
         },
     };
 
-    if(setsockopt(server_socket, SOL_SOCKET, SO_RCVTIMEO, &tv,sizeof(tv)) < 0) {
+    if(setsockopt(server_socket, SOL_SOCKET, SO_RCVTIMEO, &(int){1},sizeof(int)) < 0) {
         printf("Unable to setup server socket\n");
     }
 
     parse_args(argc, argv, args);
 
-    
+    for (int i = 1; i < argc; i++) {
+
+
+
+    }
+    sprintf(command, "%s %s", option, argument);
 
 
 }

@@ -2,6 +2,7 @@
 #include <stdlib.h>    /* for exit */
 #include <limits.h>    /* LONG_MIN et al */
 #include <string.h>    /* memset */
+#include <strings.h>    
 #include <errno.h>
 #include <getopt.h>
 
@@ -79,26 +80,24 @@ usage(const char * progname) {
 void parse_args(const int argc, char **argv, struct args * args) {
     memset(args, 0, sizeof(*args));
 
-    args->client_port = CLIENT_PORT;
-
     int c;
 
     while (true) {
         int option_index = 0;
         static struct option long_options[] = {
-            { "help",              no_argument,       0, 'h' },
-            { "port",required_argument, 0, 'P' },
-            { "token",             required_argument, 0, 't' },
-            { "version",           no_argument,       0, 'v' },
-            { "add-user",              required_argument, 0, 'u' },
-            { "change-pass"             required_argument,0,'p'},
-            { "remove-user",required_argument,0,'r'},
-            { "get-max-mails",no_argument,0,'g'},
-            { "set-max-mails",required_argument,0,'s'},
-            { "stat-historic-connections",no_argument,0,'i'},
-            { "stat-current-connections",no_argument,0,'c'},
-            { "stat-bytes-transferred",no_argument,0,'b'},
-            { 0,                   0,                 0, 0 }
+            { "help",                       no_argument,       0, 'h' },
+            { "port",                       required_argument, 0, 'P' },
+            { "token",                      required_argument, 0, 't' },
+            { "version",                    no_argument,       0, 'v' },
+            { "add-user",                   required_argument, 0, 'u' },
+            { "change-pass",                required_argument, 0,'p'},
+            { "remove-user",                required_argument, 0,'r'},
+            { "get-max-mails",              no_argument      ,0,'g'},
+            { "set-max-mails",              required_argument,0,'s'},
+            { "stat-historic-connections",  no_argument      ,0,'i'},
+            { "stat-current-connections",   no_argument      ,0,'c'},
+            { "stat-bytes-transferred",     no_argument      ,0,'b'},
+            { 0,                            0                ,0,0 }
         };
 
         c = getopt_long(argc, argv, "hP:t:vu:p:r:gs:icb", long_options, &option_index);
@@ -113,12 +112,10 @@ void parse_args(const int argc, char **argv, struct args * args) {
                 args->client_port = port(optarg);
                 break;
             case 't':
-                /*
                 if(strlen(optarg) != CLIENT_TOKEN_LENGTH) {
                     fprintf(stderr, "Token invalid. Must be six alphanumerical characters long: %s.\n", optarg);
                     exit(1);
                 }
-                */
                 strcpy(args->token, optarg);
                 break;
             case 'v':
@@ -126,15 +123,15 @@ void parse_args(const int argc, char **argv, struct args * args) {
                 break;
             case 'u':
                 //TODO checkear cantidad de usarios actuales y el maximo
-                args->new_user = optarg;
-                args->new_pass = optarg;
+                strcpy(args->new_user, optarg);
+                strcpy(args->new_pass, optarg);
                 break;
             case 'p':
-                args->change_user = optarg;
-                args->change_pass = optarg;
+                strcpy(args->change_user, optarg);
+                strcpy(args->change_pass, optarg);
                 break;
             case 'r':
-                args->remove_user = optarg;
+                strcpy(args->remove_user, optarg);
                 break;
             case 'g':
 

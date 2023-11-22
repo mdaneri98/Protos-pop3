@@ -61,6 +61,8 @@ static struct request* parse_request(char *buffer, ssize_t numBytesRcvd) {
 
     struct request* request = calloc(1, sizeof(struct request));
 
+    // tk:123456&&add-user:someuser&&pass:pass123
+
     // Extract the first token
     char * token = strtok(buffer, "&&");
     // loop through the string to extract all other tokens
@@ -70,7 +72,7 @@ static struct request* parse_request(char *buffer, ssize_t numBytesRcvd) {
 
 
 
-        
+
         token = strtok(NULL, " ");
     }
 
