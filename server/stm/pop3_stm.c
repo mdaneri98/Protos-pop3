@@ -22,11 +22,14 @@ try_state try_write(const char *str, buffer *buff)
     size_t max = 0;
     uint8_t *ptr = buffer_write_ptr(buff, &max);
     size_t message_len = strlen(str);
+
     /*
-    if(max<message_len){
-        //vuelvo a intentar despues
-        return TRY_PENDING;
-    }
+        if (max < message_len)
+        {
+            selector_set_interest(2, 2, OP_READ);
+            // vuelvo a intentar despues
+            return TRY_PENDING;
+        }
     */
     // Manda el mensaje parcialmente si no hay espacio
     memcpy(ptr, str, message_len);
@@ -145,7 +148,7 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
 
 stm_states stat_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "FD %d: STAT command");
+    logf(LOG_DEBUG, "FD %d: STAT command", key->fd);
 
     size_t mail_count = conn->current_session.mail_count;
     size_t maildir_size = conn->current_session.maildir_size;
@@ -163,7 +166,7 @@ stm_states stat_handler(struct selector_key *key, connection_data *conn)
 
 stm_states list_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "FD %d: LIST command");
+    logf(LOG_DEBUG, "FD %d: LIST command", key->fd);
     if (conn->argument_length > 0)
     {
         char *ptr;
@@ -201,7 +204,7 @@ stm_states list_handler(struct selector_key *key, connection_data *conn)
 
 stm_states retr_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "FD %d: RETR command");
+    logf(LOG_DEBUG, "FD %d: RETR command", key->fd);
 
     size_t mail_number = atoi(conn->argument);
 
@@ -226,7 +229,7 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
         return TRANSACTION;
     }
 
-    char *msj = "+OK\r\n";
+    char *msj = "+OK message follows\r\n";
     try_write(msj, &(conn->out_buff_object));
 
     char *ptr;
@@ -245,7 +248,7 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
 
 stm_states dele_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "FD %d: DELE command");
+    logf(LOG_DEBUG, "FD %d: DELE command", key->fd);
 
     size_t mail_number = atoi(conn->argument);
 
@@ -268,7 +271,7 @@ stm_states dele_handler(struct selector_key *key, connection_data *conn)
 
 stm_states noop_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "FD %d: NOOP command");
+    logf(LOG_DEBUG, "FD %d: NOOP command", key->fd);
     conn->is_finished = true;
     char msj[100];
     sprintf(msj, "+OK\r\n");
@@ -278,7 +281,7 @@ stm_states noop_handler(struct selector_key *key, connection_data *conn)
 
 stm_states rset_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "FD %d: RSET command");
+    logf(LOG_DEBUG, "FD %d: RSET command", key->fd);
     size_t maildir_size = 0;
     for (size_t i = 0; i < conn->current_session.mail_count; i++)
     {
@@ -294,7 +297,7 @@ stm_states rset_handler(struct selector_key *key, connection_data *conn)
 
 stm_states quit_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "FD %d: QUIT command");
+    logf(LOG_DEBUG, "FD %d: QUIT command", key->fd);
     for (size_t i = 0; i < conn->current_session.mail_count; i++)
     {
         if (conn->current_session.mails[i].deleted)
@@ -312,11 +315,11 @@ stm_states quit_handler(struct selector_key *key, connection_data *conn)
 
 stm_states capa_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "FD %d: NOOP command");
-    char msj[10];
-    sprintf(msj, "+OK\r\n");
+    logf(LOG_DEBUG, "FD %d: CAPA command", key->fd);
+    char msj[25];
+    sprintf(msj, "+OK\r\nUSER\r\nPIPELINING\r\n");
     try_write(msj, &(conn->out_buff_object));
-    return TRANSACTION;
+    return conn->stm.current->state;
 }
 
 typedef enum command_args
@@ -344,6 +347,14 @@ struct command commands[] = {
      .name = "PASS",
      .arguments = REQUIRED,
      .handler = pass_handler},
+    {.state = AUTHORIZATION,
+     .name = "QUIT",
+     .arguments = EMPTY,
+     .handler = quit_handler},
+    {.state = AUTHORIZATION,
+     .name = "CAPA",
+     .arguments = EMPTY,
+     .handler = capa_handler},
     {.state = TRANSACTION,
      .name = "STAT",
      .arguments = EMPTY,
@@ -447,8 +458,8 @@ stm_states read_command(struct selector_key *key, stm_states current_state)
         /* event-type es modificado en pop3_parser.
             Una vez que se termina de parsear el comando, se setea el tipo de evento en VALID_COMMAND o INVALID_COMMAND.
         */
-        logf(LOG_DEBUG, "FD %d: Current command: %s - Length: %d        Current arg: %s - Length: %d", key->fd, connection->current_command, (int)connection->command_length, connection->argument, (int)connection->argument_length);
-        logf(LOG_DEBUG, " event = %d", event->type);
+        // logf(LOG_DEBUG, "FD %d: Current command: %s - Length: %d        Current arg: %s - Length: %d", key->fd, connection->current_command, (int)connection->command_length, connection->argument, (int)connection->argument_length);
+        // logf(LOG_DEBUG, " event = %d", event->type);
         if (event->type == VALID_COMMAND)
         {
             logf(LOG_DEBUG, "FD %d: Valid command: %s", key->fd, connection->current_command);
