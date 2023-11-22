@@ -16,6 +16,7 @@
 #define SPLIT_TOKEN '&'
 
 extern struct args *args;
+extern struct stats *stats;
 
 
 struct command {
@@ -28,16 +29,16 @@ bool add_user_action(char* out_buffer, struct argument* argument) {
     log(LOG_DEBUG, "Client Request: Add User");
 
     if (args->users_count == MAX_USERS) {
-        strcpy(out_buffer, "-ERR. Maxium amount of users reached. ;");
+        strcpy(out_buffer, "-ERR. Maxium amount of users reached. ");
         return false;
     }
 
     if (argument->key[0] == '\0' || argument->value[0] == '\0') {
-        strcpy(out_buffer, "-ERR. User or password not given. ;");
+        strcpy(out_buffer, "-ERR. User or password not given. ");
         return false;
     }
 
-    strcpy(out_buffer, "OK+ Added new user. ;");
+    strcpy(out_buffer, "OK+ Added new user. ");
     strcpy(args->users[args->users_count].name, argument->key);
     strcpy(args->users[args->users_count].pass, argument->value);
     args->users_count++;
@@ -48,7 +49,7 @@ bool remove_user_action(char* out_buffer, struct argument* argument) {
     log(LOG_DEBUG, "Client Request: Remove User");
 
     if (args->users_count == 0 || argument->key[0] == '\0') {
-        strcpy(out_buffer, "-ERR. Can't remove user. ;");
+        strcpy(out_buffer, "-ERR. Can't remove user. ");
         return false;
     }
 
@@ -56,7 +57,7 @@ bool remove_user_action(char* out_buffer, struct argument* argument) {
     {
         if (strcmp(args->users[i].name, argument->key) == 0)
         {
-            strcpy(out_buffer, "OK+ Removed user. ;");
+            strcpy(out_buffer, "OK+ Removed user. ");
             strcpy(args->users[i].name, "");
             break;
         }
@@ -80,7 +81,7 @@ bool change_pass_action(char* out_buffer, struct argument* argument) {
      log(LOG_DEBUG, "Client Request: Change password");
 
     if (args->users_count == 0 || argument->key[0] == '\0' || argument->value[0] == '\0') {
-        strcpy(out_buffer, "-ERR. Can change user password. ;");
+        strcpy(out_buffer, "-ERR. Can change user password. ");
         return false;
     }
 
@@ -88,7 +89,7 @@ bool change_pass_action(char* out_buffer, struct argument* argument) {
     {
         if (strcmp(args->users[i].name, argument->key) == 0)
         {
-            strcpy(out_buffer, "OK+ Password changed. ;");
+            strcpy(out_buffer, "OK+ Password changed. ");
             strcpy(args->users[i].pass, argument->value);
             break;
         }
@@ -99,7 +100,7 @@ bool change_pass_action(char* out_buffer, struct argument* argument) {
 bool version_action(char* out_buffer, struct argument* argument) {
     strcpy(
             out_buffer,
-            "OK+ \nPOP3 Server v1.0 | ITBA - 72.07 Protocolos de Comunicación 2023 2Q ;"
+            "OK+ \nPOP3 Server v1.0 | ITBA - 72.07 Protocolos de Comunicación 2023 2Q "
     );
     return true;
 }
@@ -108,9 +109,8 @@ bool get_max_mails_action(char* out_buffer, struct argument* argument) {
     log(LOG_DEBUG, "Client Request: Get max mails");
 
     char msj[25];
-    sprintf(msj, "OK+ Max mails: %d ;", (int) args->max_mails);
+    sprintf(msj, "OK+ Max mails: %d ", (int) args->max_mails);
     strcpy(out_buffer, msj);
-
     return true;
 }
 
@@ -118,30 +118,45 @@ bool set_max_mails_action(char* out_buffer, struct argument* argument) {
     log(LOG_DEBUG, "Client Request: Get max mails");
 
     if (argument->key[0] == '\0') {
-        strcpy(out_buffer, "-ERR. Can't set max mails. ;");
+        strcpy(out_buffer, "-ERR. Can't set max mails. ");
         return false;
     }
 
     args->max_mails = atoi(argument->key);
     if (args->max_mails > 0)
     {
-        strcpy(out_buffer, "OK+ Max mails changed. ;");
+        strcpy(out_buffer, "OK+ Max mails changed. ");
     } else {
-        strcpy(out_buffer, "-ERR. Can't set max mails. ;");
+        strcpy(out_buffer, "-ERR. Can't set max mails. ");
         return false;
     }
     return true;
 }
 
 bool stat_historic_connections_action(char* out_buffer, struct argument* argument) {
+    log(LOG_DEBUG, "Client Request: Historic connections");
+
+    char msj[100];
+    sprintf(msj, "OK+ Historic connections: %lu ", stats->historical_connections);
+    strcpy(out_buffer, msj);
     return true;
 }
 
 bool stat_current_connections_action(char* out_buffer, struct argument* argument) {
+    log(LOG_DEBUG, "Client Request: Current connections");
+
+    char msj[100];
+    sprintf(msj, "OK+ Current connections: %lu ", stats->concurrent_connections);
+    strcpy(out_buffer, msj);
     return true;
 }
 
 bool stat_bytes_transferred_action(char* out_buffer, struct argument* argument) {
+    log(LOG_DEBUG, "Client Request: Bytes transferred");
+
+    char msj[100];
+    sprintf(msj, "OK+ Bytes transferred: %lu ", stats->transferred_bytes);
+    strcpy(out_buffer, msj);
     return true;
 }
 
@@ -264,7 +279,7 @@ void receive_managment_message(struct selector_key *key)
     if (strcmp(global_args->token, arg->token) != 0)
     {
         logf(LOG_DEBUG, "Invalid token %s[CLIENT] != %s[SERVER]", arg->token, global_args->token);
-        strcpy(write_buffer, "-ERR. Invalid token ;");
+        strcpy(write_buffer, "-ERR. Invalid token ");
         goto send;
     }
 

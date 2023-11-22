@@ -19,8 +19,8 @@ static void handle_read(struct selector_key *key);
 static void handle_write(struct selector_key *key);
 static void handle_close(struct selector_key *key);
 
-//extern struct args* args;
-// extern struct stats stats;
+
+extern struct stats* stats;
 
 struct state_definition stm_states_table[] = {
     {.state = AUTHORIZATION,
@@ -155,7 +155,10 @@ void accept_pop_connection(struct selector_key *key)
     {
         log(LOG_ERROR, "Error on pop3 create") goto fail;
     }
+
     conn->connection_fd = client_fd;
+    stats->concurrent_connections++;
+    stats->historical_connections++;
 
     logf(LOG_INFO, "Registering client with fd %d", client_fd);
     /*
@@ -197,6 +200,7 @@ static void handle_close(struct selector_key *key)
 {
     connection_data *conn = key->data;
 
+    stats->concurrent_connections--;
     close(key->fd);
 
     logf(LOG_INFO, "Closing connection with fd %d", conn->connection_fd);

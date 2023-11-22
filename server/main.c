@@ -31,10 +31,12 @@
 #define MAX_PENDING_CONNECTIONS 24
 #define INITIAL_FDS 1024
 
-// Cambiar antes de presentar el TP.
+// FIXME: ! Cambiar antes de presentar el TP.
 #define LOGGER_LEVEL 0
 
-struct args *args;
+struct args* args;
+struct stats* stats;
+
 int done = false;
 
 void sigterm_handler(const int signal)
@@ -85,28 +87,6 @@ finally:
 
 int main(const int argc, char **argv)
 {
-    /*
-    unsigned port = 1110;
-
-    if(argc == 1) {
-        // utilizamos el default
-    } else if(argc == 2) {
-        char *end     = 0;
-        const long sl = strtol(argv[1], &end, 10);
-
-        if (end == argv[1]|| '\0' != *end
-           || ((LONG_MIN == sl || LONG_MAX == sl) && ERANGE == errno)
-           || sl < 0 || sl > USHRT_MAX) {
-            fprintf(stderr, "port should be an integer: %s\n", argv[1]);
-            return 1;
-        }
-        port = sl;
-    } else {
-        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
-        return 1;
-    }
-    */
-
     // Registramos handlers para terminar normalmente en caso de una signal
     signal(SIGTERM, sigterm_handler);
     signal(SIGINT, sigterm_handler);
@@ -151,6 +131,12 @@ int main(const int argc, char **argv)
         return 1;
     }
     logger_set_level(LOGGER_LEVEL);
+
+    // Stadistics
+    stats = malloc(sizeof(struct stats));
+    stats->concurrent_connections = 0;
+    stats->historical_connections = 0;
+    stats->transferred_bytes = 0;
 
     // Argumentos y valores default
     args = malloc(sizeof(struct args));

@@ -11,6 +11,8 @@
 #include <strings.h>
 #include <sys/dir.h>
 
+extern struct stats* stats;
+
 typedef enum try_state
 {
     TRY_DONE,
@@ -298,6 +300,12 @@ stm_states rset_handler(struct selector_key *key, connection_data *conn)
 stm_states quit_handler(struct selector_key *key, connection_data *conn)
 {
     logf(LOG_DEBUG, "FD %d: QUIT command", key->fd);
+    if (conn->current_session.mails == NULL)
+    {
+        // FIXME: Usuario...
+        return AUTHORIZATION;
+    }
+
     for (size_t i = 0; i < conn->current_session.mail_count; i++)
     {
         if (conn->current_session.mails[i].deleted)
@@ -443,6 +451,9 @@ stm_states read_command(struct selector_key *key, stm_states current_state)
         {
             return QUIT;
         }
+        
+        stats->transferred_bytes += n;
+        
         buffer_write_adv(&connection->in_buff_object, n);
     }
     // Acá ya tenemos actualizado el buffer de lectura.
@@ -535,6 +546,8 @@ stm_states write_command(struct selector_key *key, stm_states current_state)
         ptr = (char *)buffer_read_ptr(&connection->out_buff_object, &bytes_to_send);
         ssize_t bytes_send = send(key->fd, ptr, bytes_to_send, MSG_NOSIGNAL);
         buffer_read_adv(&connection->out_buff_object, bytes_send);
+
+        stats->transferred_bytes += bytes_send;
 
         selector_set_interest_key(key, OP_READ);
     }
