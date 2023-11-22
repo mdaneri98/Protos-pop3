@@ -9,10 +9,11 @@
 #include <errno.h>
 #include "../args/args.h"
 #include "../../lib/logger/logger.h"
-
+#include "managment.h"
 
 #define CLIENT_BUFFER_SIZE 512
 #define SPLIT_TOKEN '&'
+
 /*
 struct request {
     char *command;
@@ -23,6 +24,35 @@ static struct command {
     char *name;
     void (*action)(struct request *request);
 };
+
+
+void add_user_action() {
+
+}
+
+void change_pass_action() {
+
+}
+
+void get_max_mails_action() {
+
+}
+
+void set_max_mails_action() {
+
+}
+
+void stat_historic_connections_action() {
+
+}
+
+void stat_current_connections_action() {
+
+}
+
+void stat_bytes_transferred_action() {
+
+}
 
 static struct command commands[] = {
         {
@@ -53,40 +83,46 @@ static struct command commands[] = {
             .name = "stat-bytes-transferred",
             .action = stat_bytes_transferred_action
         }
-};
+};*/
 
-static struct request* parse_request(char *buffer, ssize_t numBytesRcvd) {
-    char *command = strtok(buffer, " ");
-    char *args = strtok(NULL, " ");
+static struct argument* parse_request(char *buffer, ssize_t numBytesRcvd) {
+    struct argument* argument = malloc(sizeof(struct argument));
+    
+    // Inicialización de arguments
+    argument->token[0] = '\0';
+    argument->value[0] = '\0';
+    argument->name[0] = '\0';
+    argument->key[0] =  '\0';
 
-    struct request* request = calloc(1, sizeof(struct request));
+    /* token exampleName|exampleKey:exampleValue */
 
-    // tk:123456&&add-user:someuser&&pass:pass123
+    char* next_token;
+    // Dividir la cadena por espacios para obtener el token.
+    char* part = strtok_r(buffer, " ", &next_token);
+    if (part != NULL) {
+        strcpy(argument->token, part);
 
-    // Extract the first token
-    char * token = strtok(buffer, "&&");
-    // loop through the string to extract all other tokens
-    while( token != NULL ) {
-        
+        // Dividir la siguiente parte por | para obtener el nombre.
+        part = strtok_r(NULL, "|", &next_token);
+        if (part != NULL) {
+            strcpy(argument->name, part);
 
-
-
-
-
-        token = strtok(NULL, " ");
-    }
-
-
-    for (int i = 0; i < sizeof(commands) / sizeof(commands[0]); i++) {
-        if (strcmp(commands[i].name, command) == 0) {
-            commands[i].action(&request);
-            return NULL;
+            // Dividir la siguiente parte por : para obtener la clave y el valor.
+            part = strtok_r(NULL, ":", &next_token);
+            if (part != NULL) {
+                strcpy(argument->key, part);
+                // El valor es lo que queda después de la clave.
+                char* p = strtok_r(NULL, "", &next_token);
+                strcpy(argument->value, p);
+            }
         }
     }
-
-    logf(LOG_ERROR, "Command %s not found", command);
-
-    return NULL;
+/*
+    // Manejar valores NULL o cadenas vacías asignando valores predeterminados.
+    if (argument->key == NULL || strcmp(argument->key, "") == 0) argument->key = "default_key";
+    if (argument->value == NULL || strcmp(argument->value, "") == 0) argument->value = "default_value";
+*/
+    return argument;
 }
 
 void send_response(struct selector_key* key, char* response, struct sockaddr_storage clntAddr) {
@@ -98,13 +134,7 @@ void send_response(struct selector_key* key, char* response, struct sockaddr_sto
     }
   
 }
-*/
 
-void accept_managment_connection(struct selector_key *key) {
-    
-}
-
-/*
 // Selector_key hace referencia directamente al del servidor UDP. no hay conexión.
 void accept_managment_connection(struct selector_key *key)
 {
@@ -113,10 +143,11 @@ void accept_managment_connection(struct selector_key *key)
     socklen_t clntAddrLen = sizeof(clntAddr);
 
     char read_buffer[CLIENT_BUFFER_SIZE] = {0};
-    char write_buffer[CLIENT_BUFFER_SIZE] = {0};
+    //char write_buffer[CLIENT_BUFFER_SIZE] = {0};
 
     errno = 0;
     ssize_t numBytesRcvd = recvfrom(key->fd, read_buffer, CLIENT_BUFFER_SIZE, 0, (struct sockaddr *) &clntAddr, &clntAddrLen);
+    logf(LOG_DEBUG, "Received: %s", read_buffer);
     if (numBytesRcvd < 0) {
         logf(LOG_ERROR, "recvfrom() failed: %s ", strerror(errno))
         return;
@@ -127,6 +158,3 @@ void accept_managment_connection(struct selector_key *key)
     
     
 }
-
-
-*/

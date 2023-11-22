@@ -32,20 +32,6 @@ static void set_add_user(char * s, struct argument* argument) {
         *p = '\0';
         p++;
         strcpy(argument->name, "add-user");
-        strcpy(argument->name, s);
-        strcpy(argument->value, p);
-    }
-}
-
-static void set_token(char * s, struct argument* argument) {
-    char * p = strchr(s, ':');
-    if (p == NULL) {
-        fprintf(stderr, "Token value not found\n");
-        exit(1);
-    } else {
-        *p = '\0';
-        p++;
-        strcpy(argument->name, "token");
         strcpy(argument->key, s);
         strcpy(argument->value, p);
     }
@@ -138,11 +124,15 @@ void parse_args(const int argc, char **argv, struct args * args) {
                     fprintf(stderr, "Token invalid. Must be six alphanumerical characters long: %s.\n", optarg);
                     exit(1);
                 }
-                set_token(optarg, &args->arguments[TOKEN]);
+                strcpy(args->arguments[TOKEN].name, "token");
+                strcpy(args->arguments[TOKEN].key, optarg);
+                strcpy(args->arguments[TOKEN].value, "");
                 args->arguments_count++;
                 break;
             case 'v':
                 strcpy(args->arguments[VERSION].name, "version");
+                strcpy(args->arguments[VERSION].key, "");
+                strcpy(args->arguments[VERSION].value, "");
                 args->arguments_count++;
                 break;
             case 'u':
@@ -156,27 +146,37 @@ void parse_args(const int argc, char **argv, struct args * args) {
             case 'r':
                 strcpy(args->arguments[REMOVE_USER].name, "remove-user");
                 strcpy(args->arguments[REMOVE_USER].key, optarg);
+                strcpy(args->arguments[REMOVE_USER].value, "optarg");
                 args->arguments_count++;
                 break;
             case 'g':
                 strcpy(args->arguments[GET_MAX_MAILS].name, "get-max-mails");
+                strcpy(args->arguments[GET_MAX_MAILS].key, "");
+                strcpy(args->arguments[GET_MAX_MAILS].value, "");
                 args->arguments_count++;
                 break;
             case 's':
                 strcpy(args->arguments[SET_MAX_MAILS].name, "set-max-mails");
                 strcpy(args->arguments[SET_MAX_MAILS].key, optarg);
+                strcpy(args->arguments[SET_MAX_MAILS].value, "");
                 args->arguments_count++;
                 break;
             case 'i':
-                strcpy(args->arguments[SET_MAX_MAILS].name, "stat-historic-connections");
+                strcpy(args->arguments[STAT_HISTORIC_CONNECTIONS].name, "stat-historic-connections");
+                strcpy(args->arguments[STAT_HISTORIC_CONNECTIONS].key, "");
+                strcpy(args->arguments[STAT_HISTORIC_CONNECTIONS].value, "");
                 args->arguments_count++;
                 break;
             case 'c':
-                strcpy(args->arguments[SET_MAX_MAILS].name, "stat-current-connections");
+                strcpy(args->arguments[STAT_CURRENT_CONNECTIONS].name, "stat-current-connections");
+                strcpy(args->arguments[STAT_CURRENT_CONNECTIONS].key, "");
+                strcpy(args->arguments[STAT_CURRENT_CONNECTIONS].value, "");
                 args->arguments_count++;
                 break;
             case 'b':
-                strcpy(args->arguments[SET_MAX_MAILS].name, "stat-bytes-transferred");
+                strcpy(args->arguments[STAT_BYTES_TRANSFERRED].name, "stat-bytes-transferred");
+                strcpy(args->arguments[STAT_BYTES_TRANSFERRED].key, "");
+                strcpy(args->arguments[STAT_BYTES_TRANSFERRED].value, "");
                 args->arguments_count++;
                 break;
             default:

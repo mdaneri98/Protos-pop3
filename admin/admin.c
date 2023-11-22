@@ -40,15 +40,19 @@ int main(const int argc, char **argv)
     int ret = 0;
     const char* err_msg = NULL;
 
-    args = calloc(1, sizeof(args));
+    args = malloc(sizeof(struct args));
     parse_args(argc, argv, args);
+
+    for (int i = 0; i < MAX_ARGUMENTS; i++) {
+        logf(LOG_DEBUG, "Argument name %s | key %s | value %s\n", args->arguments[i].name, args->arguments[i].key, args->arguments[i].value);
+    }
 
     // ------------------ CONFIGURACION DEL CLIENTE ------------------
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;                // IPv4
     addr.sin_addr.s_addr = htonl(INADDR_ANY); // Todas las interfaces (escucha por cualquier IP)
-    addr.sin_port = htons(PORT); // Client port
+    addr.sin_port = htons(PORT);              // Client port
 
     const int client_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (client_socket < 0)
@@ -61,12 +65,19 @@ int main(const int argc, char **argv)
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SERVER_PORT);
+    server_addr.sin_port = htons(args->server_port);
     server_addr.sin_addr.s_addr = INADDR_ANY;
     
 
-    if(setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &(int){1},sizeof(int)) < 0) {
-        printf("Unable to setup server socket\n");
+    /*
+    Este fragmento de código configura el socket para que una operación de recepción (recv) tenga un tiempo de espera de 1 segundo. 
+    Si no se recibe una respuesta en ese tiempo, la función recv fallará con un error de tiempo de espera.
+    */
+    struct timeval tv;
+    tv.tv_sec = 1;  // 1 segundo
+    tv.tv_usec = 0; // 0 microsegundos
+    if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        printf("Unable to set socket timeout\n");
     }
 
     // ------------------ ENVIO DE COMANDOS ------------------
@@ -76,60 +87,47 @@ int main(const int argc, char **argv)
         if (args->arguments[i].name[0] == '\0') 
         {
             logf(LOG_DEBUG, "Argument %d is empty", i);
+            free(command);
             continue;
         }
 
+        printf("Name: %s\n", args->arguments[i].name);
+        printf("Key: %s\n", args->arguments[i].key);
+        printf("Value: %s\n", args->arguments[i].value);
+
         logf(LOG_DEBUG, "Argument %d is %s", i, args->arguments[i].name);
-        if (args->arguments[i].key[0] == '\0')
-        {
-            sprintf(
-                command,
-                "token %s %s\n",
-                args->arguments[TOKEN].value,
-                args->arguments[i].name
-            );
-        } else 
-        {
-            if (args->arguments[i].value[0] == '\0')
-            {
-                sprintf(
-                    command,
-                    "token %s %s|%s",
-                    args->arguments[TOKEN].value,
-                    args->arguments[i].name,
-                    args->arguments[i].key
-                );
-            } else 
-            {
-                sprintf(
-                    command,
-                    "token %s %s|%s:%s",
-                    args->arguments[TOKEN].value,
-                    args->arguments[i].name,
-                    args->arguments[i].key,
-                    args->arguments[i].value
-                );
-            }
-        }
+       
+        sprintf(
+            command,
+            "token %s %s|%s:%s",
+            *args->arguments[TOKEN].key ? args->arguments[TOKEN].key : "not-given",
+            *args->arguments[i].name ? args->arguments[i].name : "not-given",
+            *args->arguments[i].key ? args->arguments[i].key : "not-given",
+            *args->arguments[i].value ? args->arguments[i].value : "not-given"
+        );
         
         logf(LOG_DEBUG, "Sending command %s", command);
         if (sendto(client_socket, command, strlen(command), 0, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
             printf("%s: Unable to send request\n\n", args->arguments[i].name);
-            continue;
         }
 
-/*
-        logf(LOG_DEBUG, "Receiving\n");
-        if (recvfrom(client_socket, response, sizeof(response), 0, (struct sockaddr *) &address, &address_length) < 0) {
+        char response[DEFAULT_SIZE];
+        log(LOG_DEBUG, "Receiving\n");
+        if (recvfrom(client_socket, response, sizeof(response), 0, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
             printf("%s: Server did not respond %s\n\n", args->arguments[i].name);
             continue;
         }
-*/
+        
+        printf(response);
+        printf("\n");
 
+        free(command);
     }
 
 
 finally:
+    free(args);
+
     if (err_msg != NULL)
     {
         fprintf(stderr, "%s\n", err_msg);

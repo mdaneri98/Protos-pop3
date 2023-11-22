@@ -11,14 +11,14 @@ SERVER_OBJS = $(SERVER_DIR)/args/args.o $(SERVER_DIR)/parser/pop3_parser.o $(SER
 CLIENT_OBJS = $(CLIENT_DIR)/args/admin_args.o $(CLIENT_DIR)/admin.o
 ALL_OBJS = $(LIB_OBJS) $(SERVER_OBJS) $(CLIENT_OBJS)
 
-TARGET = pop3
+SERVER = pop3
 CLIENT = client
 
 .PHONY: all clean
 
-all: $(TARGET) $(CLIENT)
+all: $(SERVER) $(CLIENT)
 
-$(TARGET): $(SERVER_OBJS) $(LIB_OBJS)
+$(SERVER): $(SERVER_OBJS) $(LIB_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
 $(CLIENT): $(CLIENT_OBJS) $(LIB_OBJS)
@@ -44,4 +44,4 @@ $(SERVER_DIR)/%.o: $(SERVER_DIR)/%.c
 # Add rules for client objects here if any
 
 clean:
-	rm -f $(ALL_OBJS) $(TARGET) $(CLIENT)
+	rm -f $(ALL_OBJS) $(SERVER) $(CLIENT)
