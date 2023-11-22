@@ -197,6 +197,8 @@ static void handle_close(struct selector_key *key)
 {
     connection_data *conn = key->data;
 
+    close(key->fd);
+
     logf(LOG_INFO, "Closing connection with fd %d", conn->connection_fd);
     parser_destroy(conn->parser);
     free(conn->user);
