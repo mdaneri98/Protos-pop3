@@ -5,12 +5,13 @@
 #include "../../lib/selector.h"
 
 #define DEFAULT_SIZE 256
-#define MAX_ARGUMENTS 11
+#define MAX_ARGUMENTS 12
 
 typedef enum args_type {
     HELP,
     ADD_USER,
     CHANGE_PASS,
+    CHANGE_MAILDIR,
     REMOVE_USER,
     CONFIG_SERVER_PORT,
     TOKEN,

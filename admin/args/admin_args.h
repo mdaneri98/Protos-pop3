@@ -9,6 +9,7 @@ typedef enum args_type {
     HELP,
     ADD_USER,
     CHANGE_PASS,
+    CHANGE_MAILDIR,
     REMOVE_USER,
     CONFIG_SERVER_PORT,
     TOKEN,

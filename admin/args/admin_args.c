@@ -70,6 +70,8 @@ usage(const char * progname) {
         "   -p <user>:<password>             Change the password of a user.\n\n"
         "   --remove-user <user>\n"
         "   -r <user>                        Remove a user from the server.\n\n"
+        "   --change-maildir <maildir>\n"
+        "   -m <maildir>                     Change the password of a user.\n\n"
         "   --get-max-mails \n"
         "   -g                              Get the maximum number of mails.\n\n"
         "   --set-max-mails <number>\n"
@@ -99,6 +101,7 @@ void parse_args(const int argc, char **argv, struct args * args) {
             { "version",                    no_argument,       0, 'v' },
             { "add-user",                   required_argument, 0, 'u' },
             { "change-pass",                required_argument, 0,'p'},
+            { "change-maildir",             required_argument, 0,'m'},
             { "remove-user",                required_argument, 0,'r'},
             { "get-max-mails",              no_argument      ,0,'g'},
             { "set-max-mails",              required_argument,0,'s'},
@@ -108,7 +111,7 @@ void parse_args(const int argc, char **argv, struct args * args) {
             { 0,                            0                ,0,0 }
         };
 
-        c = getopt_long(argc, argv, "hP:t:vu:p:r:gs:icb", long_options, &option_index);
+        c = getopt_long(argc, argv, "hP:t:vu:pm:r:gs:icb", long_options, &option_index);
         if (c == -1)
             break;
 
@@ -143,10 +146,16 @@ void parse_args(const int argc, char **argv, struct args * args) {
                 set_change_pass(optarg, &args->arguments[CHANGE_PASS]);
                 args->arguments_count++;
                 break;
+            case 'm':
+                strcpy(args->arguments[REMOVE_USER].name, "change-maildir");
+                strcpy(args->arguments[REMOVE_USER].key, optarg);
+                strcpy(args->arguments[REMOVE_USER].value, "");
+                args->arguments_count++;
+                break;
             case 'r':
                 strcpy(args->arguments[REMOVE_USER].name, "remove-user");
                 strcpy(args->arguments[REMOVE_USER].key, optarg);
-                strcpy(args->arguments[REMOVE_USER].value, "optarg");
+                strcpy(args->arguments[REMOVE_USER].value, "");
                 args->arguments_count++;
                 break;
             case 'g':

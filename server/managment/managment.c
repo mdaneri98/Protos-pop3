@@ -30,12 +30,12 @@ bool add_user_action(char* out_buffer, struct argument* argument) {
     log(LOG_DEBUG, "Client Request: Add User");
 
     if (args->users_count == MAX_USERS) {
-        strcpy(out_buffer, "-ERR. Maxium amount of users reached. ");
+        strcpy(out_buffer, "-ERR. Maxium amount of users reached.\r\n");
         return false;
     }
 
     if (argument->key[0] == '\0' || argument->value[0] == '\0') {
-        strcpy(out_buffer, "-ERR. User or password not given. ");
+        strcpy(out_buffer, "-ERR. User or password not given.\r\n");
         return false;
     }
 
@@ -50,7 +50,7 @@ bool remove_user_action(char* out_buffer, struct argument* argument) {
     log(LOG_DEBUG, "Client Request: Remove User");
 
     if (args->users_count == 0 || argument->key[0] == '\0') {
-        strcpy(out_buffer, "-ERR. Can't remove user. ");
+        strcpy(out_buffer, "-ERR. Can't remove user.\r\n");
         return false;
     }
 
@@ -58,7 +58,7 @@ bool remove_user_action(char* out_buffer, struct argument* argument) {
     {
         if (strcmp(args->users[i].name, argument->key) == 0)
         {
-            strcpy(out_buffer, "OK+ Removed user. ");
+            strcpy(out_buffer, "OK+ Removed user.\r\n");
             strcpy(args->users[i].name, "");
             break;
         }
@@ -68,23 +68,19 @@ bool remove_user_action(char* out_buffer, struct argument* argument) {
     return true;
 }
 
-bool config_server_port_action(char* out_buffer, struct argument* argument) {
-    done = false;
-    
-    return true;
-}
-
-bool token_action(char* out_buffer, struct argument* argument) {
+bool token_action(char* out_buffer, struct argument* argument)
+{
     log(LOG_DEBUG, "Client Request: Token validation");
     // Nothing to do.
     return true;
 }
 
-bool change_pass_action(char* out_buffer, struct argument* argument) {
+bool change_pass_action(char* out_buffer, struct argument* argument)
+{
      log(LOG_DEBUG, "Client Request: Change password");
 
     if (args->users_count == 0 || argument->key[0] == '\0' || argument->value[0] == '\0') {
-        strcpy(out_buffer, "-ERR. Can change user password. ");
+        strcpy(out_buffer, "-ERR. Can change user password.\r\n");
         return false;
     }
 
@@ -92,7 +88,7 @@ bool change_pass_action(char* out_buffer, struct argument* argument) {
     {
         if (strcmp(args->users[i].name, argument->key) == 0)
         {
-            strcpy(out_buffer, "OK+ Password changed. ");
+            strcpy(out_buffer, "OK+ Password changed.\r\n");
             strcpy(args->users[i].pass, argument->value);
             break;
         }
@@ -100,10 +96,23 @@ bool change_pass_action(char* out_buffer, struct argument* argument) {
     return true;
 }
 
+bool change_maildir_action(char* out_buffer, struct argument* argument) 
+{
+    log(LOG_DEBUG, "Client Request: Change maildir");
+
+    if (argument->key[0] == '\0') {
+        strcpy(out_buffer, "-ERR. Can't change maildir.\r\n");
+        return false;
+    }
+
+    strcpy(out_buffer, "OK+ Maildir changed.\r\n ");
+    strcpy(args->mail_directory, argument->key);
+    return true;
+}
+
 bool version_action(char* out_buffer, struct argument* argument) {
     strcpy(
-            out_buffer,
-            "OK+ \nPOP3 Server v1.0 | ITBA - 72.07 Protocolos de Comunicación 2023 2Q "
+            out_buffer, "OK+ POP3 Server v1.0 | ITBA - 72.07 Protocolos de Comunicación 2023 2Q.\r\n"
     );
     return true;
 }
@@ -112,7 +121,7 @@ bool get_max_mails_action(char* out_buffer, struct argument* argument) {
     log(LOG_DEBUG, "Client Request: Get max mails");
 
     char msj[25];
-    sprintf(msj, "OK+ Max mails: %d ", (int) args->max_mails);
+    sprintf(msj, "OK+ Max mails: %d.\r\n", (int) args->max_mails);
     strcpy(out_buffer, msj);
     return true;
 }
@@ -121,16 +130,16 @@ bool set_max_mails_action(char* out_buffer, struct argument* argument) {
     log(LOG_DEBUG, "Client Request: Get max mails");
 
     if (argument->key[0] == '\0') {
-        strcpy(out_buffer, "-ERR. Can't set max mails. ");
+        strcpy(out_buffer, "-ERR. Can't set max mails\r\n");
         return false;
     }
 
     args->max_mails = atoi(argument->key);
     if (args->max_mails > 0)
     {
-        strcpy(out_buffer, "OK+ Max mails changed. ");
+        strcpy(out_buffer, "OK+ Max mails changed.\r\n");
     } else {
-        strcpy(out_buffer, "-ERR. Can't set max mails. ");
+        strcpy(out_buffer, "-ERR. Can't set max mails.\r\n");
         return false;
     }
     return true;
@@ -140,7 +149,7 @@ bool stat_historic_connections_action(char* out_buffer, struct argument* argumen
     log(LOG_DEBUG, "Client Request: Historic connections");
 
     char msj[100];
-    sprintf(msj, "OK+ Historic connections: %lu ", stats->historical_connections);
+    sprintf(msj, "OK+ Historic connections: %lu.\r\n", stats->historical_connections);
     strcpy(out_buffer, msj);
     return true;
 }
@@ -149,7 +158,7 @@ bool stat_current_connections_action(char* out_buffer, struct argument* argument
     log(LOG_DEBUG, "Client Request: Current connections");
 
     char msj[100];
-    sprintf(msj, "OK+ Current connections: %lu ", stats->concurrent_connections);
+    sprintf(msj, "OK+ Current connections: %lu.\r\n", stats->concurrent_connections);
     strcpy(out_buffer, msj);
     return true;
 }
@@ -158,7 +167,7 @@ bool stat_bytes_transferred_action(char* out_buffer, struct argument* argument) 
     log(LOG_DEBUG, "Client Request: Bytes transferred");
 
     char msj[100];
-    sprintf(msj, "OK+ Bytes transferred: %lu ", stats->transferred_bytes);
+    sprintf(msj, "OK+ Bytes transferred: %lu\r\n", stats->transferred_bytes);
     strcpy(out_buffer, msj);
     return true;
 }
@@ -173,12 +182,12 @@ static struct command commands[] = {
             .action = change_pass_action
         },
         {
-            .name = "remove-user",
-            .action = remove_user_action
+            .name = "change-maildir",
+            .action = change_maildir_action
         },
         {
-            .name = "config-server-port",
-            .action = config_server_port_action
+            .name = "remove-user",
+            .action = remove_user_action
         },
         {
             .name = "token",

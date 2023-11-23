@@ -12,7 +12,7 @@
 
 #define CLIENT_TOKEN_LENGTH 6
 
-#define MAX_ARGUMENTS 12
+#define MAX_ARGUMENTS 13
 #define DEFAULT_SIZE 256
 
 struct users

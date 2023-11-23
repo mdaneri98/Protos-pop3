@@ -11,7 +11,8 @@
 #include <errno.h>
 
 
-#define PORT 1024
+#define CLIENT_PORT 1120
+#define MANAGMENT_PORT 9090
 
 struct args *args;
 int done = false;
@@ -40,8 +41,9 @@ int main(const int argc, char **argv)
     int ret = 0;
     const char* err_msg = NULL;
 
-    args = malloc(sizeof(struct args));
+    args = calloc(1, sizeof(struct args));
     parse_args(argc, argv, args);
+    args->server_port == 0 ? args->server_port = MANAGMENT_PORT : args->server_port;
 
     for (int i = 0; i < MAX_ARGUMENTS; i++) {
         logf(LOG_DEBUG, "Argument name %s | key %s | value %s\n", args->arguments[i].name, args->arguments[i].key, args->arguments[i].value);
@@ -52,7 +54,7 @@ int main(const int argc, char **argv)
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;                // IPv4
     addr.sin_addr.s_addr = htonl(INADDR_ANY); // Todas las interfaces (escucha por cualquier IP)
-    addr.sin_port = htons(PORT);              // Client port
+    addr.sin_port = htons(CLIENT_PORT);              // Client port
 
     const int client_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (client_socket < 0)
@@ -95,7 +97,7 @@ int main(const int argc, char **argv)
        
         sprintf(
             command,
-            "token %s %s|%s:%s",
+            "token %s %s|%s:%s\r\n",
             *args->arguments[TOKEN].key ? args->arguments[TOKEN].key : "not-given",
             *args->arguments[i].name ? args->arguments[i].name : "not-given",
             *args->arguments[i].key ? args->arguments[i].key : "not-given",
@@ -115,8 +117,9 @@ int main(const int argc, char **argv)
             continue;
         }
         
-        printf(response);
-        printf("\n");
+        logf(LOG_DEBUG, "Response: %s", response);
+        printf("%s", response);
+        //printf("\n");
 
         free(command);
     }
