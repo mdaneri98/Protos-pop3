@@ -216,7 +216,7 @@ static void handle_write(struct selector_key *key)
     {
         selector_unregister_fd(key->s, key->fd);
     }
-    else if (buffer_can_read(&connection->in_buff_object))
+    else if (buffer_can_read(&connection->in_buff_object) || !connection->is_finished)
     {
         selector_set_interest_key(key, OP_NOOP);
         stm_handler_read(&connection->stm, key);
