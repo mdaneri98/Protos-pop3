@@ -19,8 +19,7 @@ static void handle_read(struct selector_key *key);
 static void handle_write(struct selector_key *key);
 static void handle_close(struct selector_key *key);
 
-
-extern struct stats* stats;
+extern struct stats *stats;
 
 struct state_definition stm_states_table[] = {
     {.state = AUTHORIZATION,
@@ -117,7 +116,7 @@ connection_data *pop3_init(void *data)
     conn->command_length = 0;
     conn->argument[0] = '\0';
     conn->argument_length = 0;
-    conn->is_finished = false;
+    conn->is_finished = true;
     conn->command_error = false;
 
     conn->current_session.mails = NULL;
@@ -191,7 +190,7 @@ static void handle_read(struct selector_key *key)
     /* Indicamos que ocurrió el evento read.
         Se ejecuta la función 'on_read_ready' para el estado actual de la maquina de estados
     */
-    struct connection_data * connection = (struct connection_data* )key->data;
+    struct connection_data *connection = (struct connection_data *)key->data;
     stm_handler_read(&connection->stm, key);
 }
 
@@ -200,25 +199,30 @@ static void handle_write(struct selector_key *key)
     /* Indicamos que ocurrió el evento write, para el socket con fd de key->fd
         Se ejecuta la función 'on_write_ready' para el estado actual de la maquina de estados
     */
-    struct connection_data * connection = (struct connection_data* )key->data;
+    struct connection_data *connection = (struct connection_data *)key->data;
     stm_handler_write(&connection->stm, key);
 
     size_t read_bytes;
-    char * ptr = (char *) buffer_read_ptr(&connection->out_buff_object, &read_bytes);
+    char *ptr = (char *)buffer_read_ptr(&connection->out_buff_object, &read_bytes);
     ssize_t n = send(key->fd, ptr, read_bytes, 0);
-    if (n == -1) {
+    if (n == -1)
+    {
         selector_unregister_fd(key->s, key->fd);
         return;
     }
     buffer_read_adv(&connection->out_buff_object, n);
 
-
-    if (connection->current_session.requested_quit) {
+    if (connection->current_session.requested_quit)
+    {
         selector_unregister_fd(key->s, key->fd);
-    } else if (buffer_can_read(&connection->in_buff_object)) {
+    }
+    else if (buffer_can_read(&connection->in_buff_object))
+    {
         selector_set_interest_key(key, OP_NOOP);
         stm_handler_read(&connection->stm, key);
-    } else {
+    }
+    else
+    {
         selector_set_interest_key(key, OP_READ);
     }
 }

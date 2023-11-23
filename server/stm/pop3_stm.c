@@ -10,9 +10,10 @@
 #include <errno.h>
 #include <strings.h>
 #include <sys/dir.h>
+#include <stdio.h>
 
-extern struct args* args;
-extern struct stats* stats;
+extern struct args *args;
+extern struct stats *stats;
 
 typedef enum try_state
 {
@@ -25,15 +26,6 @@ try_state try_write(const char *str, buffer *buff)
     size_t max = 0;
     uint8_t *ptr = buffer_write_ptr(buff, &max);
     size_t message_len = strlen(str);
-
-    /*
-        if (max < message_len)
-        {
-            selector_set_interest(2, 2, OP_READ);
-            // vuelvo a intentar despues
-            return TRY_PENDING;
-        }
-    */
     // Manda el mensaje parcialmente si no hay espacio
     memcpy(ptr, str, message_len);
     //    strncpy((char*)ptr, str, message_len);
@@ -234,20 +226,35 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
         return TRANSACTION;
     }
 
-    char *msj = "+OK message follows\r\n";
-    try_write(msj, &(conn->out_buff_object));
+    if (conn->is_finished)
+    {
+        char *msj = "+OK message follows\r\n";
+        try_write(msj, &(conn->out_buff_object));
+    }
 
     char *ptr;
     size_t n;
     ptr = (char *)buffer_write_ptr(&conn->out_buff_object, &n);
 
+    size_t file_size = conn->current_session.mails[mail_number - 1].size;
+    if (file_size - conn->current_session.mails[mail_number - 1].read_index + 6 <= n)
+    {
+        fseek(mail_file, conn->current_session.mails[mail_number - 1].read_index, SEEK_SET);
+        size_t bytes_read = fread(ptr, sizeof(char), n - 1, mail_file);
+        buffer_write_adv(&conn->out_buff_object, bytes_read);
+        fclose(mail_file);
+        try_write("\r\n.\r\n", &(conn->out_buff_object));
+        conn->is_finished = true;
+        conn->current_session.mails[mail_number - 1].read_index = 0;
+        return TRANSACTION;
+    }
+
+    fseek(mail_file, conn->current_session.mails[mail_number - 1].read_index, SEEK_SET);
     size_t bytes_read = fread(ptr, sizeof(char), n, mail_file);
     buffer_write_adv(&conn->out_buff_object, bytes_read);
-
     fclose(mail_file);
-
-    try_write("\r\n.\r\n", &(conn->out_buff_object));
-
+    conn->is_finished = false;
+    conn->current_session.mails[mail_number - 1].read_index += n;
     return TRANSACTION;
 }
 
@@ -277,10 +284,10 @@ stm_states dele_handler(struct selector_key *key, connection_data *conn)
 stm_states noop_handler(struct selector_key *key, connection_data *conn)
 {
     logf(LOG_DEBUG, "FD %d: NOOP command", key->fd);
-    conn->is_finished = true;
     char msj[100];
     sprintf(msj, "+OK\r\n");
     try_write(msj, &(conn->out_buff_object));
+    conn->is_finished = true;
     return TRANSACTION;
 }
 
@@ -311,7 +318,8 @@ stm_states quit_handler(struct selector_key *key, connection_data *conn)
 
         try_write(msj, &(conn->out_buff_object));
         return QUIT;
-    } else if (conn->stm.current->state == TRANSACTION)
+    }
+    else if (conn->stm.current->state == TRANSACTION)
     {
         logf(LOG_DEBUG, "FD %d: QUIT command", key->fd);
         if (conn->current_session.mails != NULL)
@@ -324,14 +332,16 @@ stm_states quit_handler(struct selector_key *key, connection_data *conn)
                 }
             }
 
-            for (size_t i = 0; i < MAX_USERS; i++) {
+            for (size_t i = 0; i < MAX_USERS; i++)
+            {
                 if (strcmp(args->users[i].name, conn->current_session.username) == 0)
                 {
                     args->users[i].logged_in = false;
                 }
             }
             printf("Libero recursos\n");
-            if (conn->current_session.mails != NULL) {
+            if (conn->current_session.mails != NULL)
+            {
                 free(conn->current_session.mails);
                 conn->current_session.mails = NULL; // Establecer el puntero a NULL después de liberar la memoria
             }
@@ -457,15 +467,20 @@ stm_states stm_server_read(struct selector_key *key)
 
 void clean_command(connection_data *connection)
 {
-    connection->current_command[0] = '\0';
-    connection->command_length = 0;
-    connection->argument[0] = '\0';
-    connection->argument_length = 0;
+    if (connection->is_finished)
+    {
+        connection->current_command[0] = '\0';
+        connection->command_length = 0;
+        connection->argument[0] = '\0';
+        connection->argument_length = 0;
+    }
 }
 
 stm_states read_command(struct selector_key *key, stm_states current_state)
 {
     struct connection_data *connection = (struct connection_data *)key->data;
+    logf(LOG_DEBUG, "ENTERED READ COMMAND %d", (int)connection->is_finished);
+
     char *ptr;
 
     if (!buffer_can_read(&connection->in_buff_object))
@@ -479,12 +494,27 @@ stm_states read_command(struct selector_key *key, stm_states current_state)
         {
             return QUIT;
         }
-        
+
         stats->transferred_bytes += n;
-        
+
         buffer_write_adv(&connection->in_buff_object, n);
     }
     // Acá ya tenemos actualizado el buffer de lectura.
+
+    if (!connection->is_finished)
+    {
+        for (size_t j = 0; j < COMMAND_QTY; j++)
+        {
+            struct command maybe_command = commands[j];
+            if (strcasecmp(maybe_command.name, connection->current_command) == 0 && maybe_command.state == current_state)
+            {
+                stm_states next_state = maybe_command.handler(key, connection);
+                selector_set_interest_key(key, OP_WRITE);
+                clean_command(connection);
+                return next_state;
+            }
+        }
+    }
 
     size_t read_bytes;
     ptr = (char *)buffer_read_ptr(&connection->in_buff_object, &read_bytes);
@@ -647,14 +677,13 @@ void stm_transaction_arrival(stm_states state, struct selector_key *key)
         printf("%s\n", connection->current_session.mails == NULL ? "si" : "no");
         if (connection->current_session.mails == NULL)
         {
-            printf("Se caloqueo %d\n", (int) args->max_mails);
+            printf("Se caloqueo %d\n", (int)args->max_mails);
             connection->current_session.mails = calloc(args->max_mails, sizeof(struct mail));
         }
-        printf("Accediendo a current_session.mails[%d]\n", (int) i);
-        printf("Accediendo a current_session.mails[%d]: %s\n", (int) i, connection->current_session.mails[i].path);
-        
-        printf("Accediendo a current_session.maildir: %s\n", connection->current_session.maildir);
+        printf("Accediendo a current_session.mails[%d]\n", (int)i);
+        printf("Accediendo a current_session.mails[%d]: %s\n", (int)i, connection->current_session.mails[i].path);
 
+        printf("Accediendo a current_session.maildir: %s\n", connection->current_session.maildir);
 
         strcat(connection->current_session.mails[i].path, connection->current_session.maildir);
         strcat(connection->current_session.mails[i].path, "/");

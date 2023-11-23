@@ -104,6 +104,7 @@ struct stats
 
 struct mail
 {
+    size_t read_index;
     char path[PATH_SIZE];
     bool deleted;
     size_t size;
