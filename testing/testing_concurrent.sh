@@ -3,9 +3,6 @@
 # Specify the number of iterations
 iterations=1000
 
-# Array to store background job PIDs
-pids=()
-
 # Function to clean up and close connections
 cleanup() {
     echo "Closing connections..."
@@ -16,18 +13,18 @@ cleanup() {
     echo "Connections closed."
 }
 
+# Trap signals to ensure cleanup on exit
+trap 'cleanup; exit 1' INT TERM EXIT
+
 sleep_ms() {
     local duration=$(echo "$1 / 1000" | bc -l)
     sleep "$duration"
 }
 
-# Trap signals to ensure cleanup on exit
-trap 'cleanup; exit 1' INT TERM EXIT
-
 # Loop to run the script
 for ((i = 1; i <= iterations; i++)); do
     # Run the script and store the PID
-    (printf "USER mdaneri\nPASS pass123\nLIST\n" | ncat -C localhost 1110) >> test_concurrent_out.txt &
+    { printf "USER mdaneri\nPASS pass123\nLIST\n"; sleep 20; } | nc -C localhost 1110 >> test_concurrent_out.txt &
     pid=$!
     pids+=("$pid")
     printf "Connection $i created with pid: $pid\n"
