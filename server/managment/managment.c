@@ -17,6 +17,7 @@
 
 extern struct args *args;
 extern struct stats *stats;
+extern int done;
 
 
 struct command {
@@ -68,6 +69,8 @@ bool remove_user_action(char* out_buffer, struct argument* argument) {
 }
 
 bool config_server_port_action(char* out_buffer, struct argument* argument) {
+    done = false;
+    
     return true;
 }
 

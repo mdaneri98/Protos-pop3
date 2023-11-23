@@ -11,6 +11,7 @@
 #include <strings.h>
 #include <sys/dir.h>
 
+extern struct args* args;
 extern struct stats* stats;
 
 typedef enum try_state
@@ -111,6 +112,7 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
         strcat(conn->current_session.maildir, "/");
         strcat(conn->current_session.maildir, conn->user->name);
         strcat(conn->current_session.maildir, "/cur");
+        printf("Newly maildir: %s\n", conn->current_session.maildir);
 
         DIR *directory = opendir(conn->current_session.maildir);
         if (directory == NULL)
@@ -219,6 +221,7 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
     }
 
     char mail_path[PATH_SIZE];
+    printf("maildir: %s\n", conn->current_session.mails[0].path);
     strcpy(mail_path, conn->current_session.mails[mail_number - 1].path);
 
     FILE *mail_file = fopen(mail_path, "r");
@@ -300,25 +303,50 @@ stm_states rset_handler(struct selector_key *key, connection_data *conn)
 stm_states quit_handler(struct selector_key *key, connection_data *conn)
 {
     logf(LOG_DEBUG, "FD %d: QUIT command", key->fd);
-    if (conn->current_session.mails == NULL)
+    if (conn->stm.current->state == AUTHORIZATION)
     {
-        // FIXME: Usuario...
-        return AUTHORIZATION;
-    }
+        conn->current_session.requested_quit = true;
+        char msj[100];
+        sprintf(msj, "+OK pop3 server signing off\r\n");
 
-    for (size_t i = 0; i < conn->current_session.mail_count; i++)
+        try_write(msj, &(conn->out_buff_object));
+        return QUIT;
+    } else if (conn->stm.current->state == TRANSACTION)
     {
-        if (conn->current_session.mails[i].deleted)
+        logf(LOG_DEBUG, "FD %d: QUIT command", key->fd);
+        if (conn->current_session.mails != NULL)
         {
-            remove(conn->current_session.mails[i].path);
+            for (size_t i = 0; i < conn->current_session.mail_count; i++)
+            {
+                if (conn->current_session.mails[i].deleted)
+                {
+                    remove(conn->current_session.mails[i].path);
+                }
+            }
+
+            for (size_t i = 0; i < MAX_USERS; i++) {
+                if (strcmp(args->users[i].name, conn->current_session.username) == 0)
+                {
+                    args->users[i].logged_in = false;
+                }
+            }
+            printf("Libero recursos\n");
+            if (conn->current_session.mails != NULL) {
+                free(conn->current_session.mails);
+                conn->current_session.mails = NULL; // Establecer el puntero a NULL después de liberar la memoria
+            }
+            conn->current_session.maildir[0] = '\0';
+            conn->current_session.username[0] = '\0';
+            conn->current_session.mail_count = 0;
+
+            char msj[100];
+            sprintf(msj, "+OK\r\n");
+            try_write(msj, &(conn->out_buff_object));
+
+            return AUTHORIZATION;
         }
     }
-    free(conn->current_session.mails);
-
-    char msj[100];
-    sprintf(msj, "+OK\r\n");
-    try_write(msj, &(conn->out_buff_object));
-    return AUTHORIZATION;
+    return ERROR;
 }
 
 stm_states capa_handler(struct selector_key *key, connection_data *conn)
@@ -616,14 +644,18 @@ void stm_transaction_arrival(stm_states state, struct selector_key *key)
 
         size_t i = connection->current_session.mail_count;
 
+        printf("%s\n", connection->current_session.mails == NULL ? "si" : "no");
         if (connection->current_session.mails == NULL)
         {
-            connection->current_session.mails = calloc(1, sizeof(struct mail));
+            printf("Se caloqueo %d\n", (int) args->max_mails);
+            connection->current_session.mails = calloc(args->max_mails, sizeof(struct mail));
         }
-        else
-        {
-            connection->current_session.mails = realloc(connection->current_session.mails, sizeof(struct mail) * (i + 1));
-        }
+        printf("Accediendo a current_session.mails[%d]\n", (int) i);
+        printf("Accediendo a current_session.mails[%d]: %s\n", (int) i, connection->current_session.mails[i].path);
+        
+        printf("Accediendo a current_session.maildir: %s\n", connection->current_session.maildir);
+
+
         strcat(connection->current_session.mails[i].path, connection->current_session.maildir);
         strcat(connection->current_session.mails[i].path, "/");
         strcat(connection->current_session.mails[i].path, file->d_name);

@@ -85,6 +85,108 @@ finally:
     return -1;
 }
 
+int set_up_ipv4_server(int port, const char** err_msg)
+{
+    // Address para hacer el bind del socket.
+    // Creamos para el servidor con IPv4 y IPv6, mismo puerto.
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;                // IPv4
+    addr.sin_addr.s_addr = htonl(INADDR_ANY); // Todas las interfaces (escucha por cualquier IP)
+    addr.sin_port = htons(args->server_port); // Server port
+
+    // Pasive server sockets
+    const int server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (server < 0)
+    {
+        *err_msg = "unable to create IPv4 socket";
+        return -1;
+    }
+
+    logf(LOG_DEBUG, "Listening on TCP port %d", args->server_port);
+    fprintf(stdout, "Listening on TCP port %d\n", args->server_port);
+
+    // man 7 ip. no importa reportar nada si falla.
+    log(LOG_DEBUG, "Setting SO_REUSEADDR on IPv4 socket");
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));   // en caso de abortar, reusar direccion y puerto
+
+    // bind server sockets to port
+    log(LOG_DEBUG, "Binding IPv4 socket");
+    if (bind(server, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+    {
+        *err_msg = "unable to bind socket";
+        return -1;
+    }
+
+    // listen for incoming connections.
+    log(LOG_DEBUG, "Listening IPv4 socket");
+    if (listen(server, MAX_PENDING_CONNECTIONS) < 0)
+    {
+        *err_msg = "unable to listen";
+        return -1;
+    }
+
+    /*
+        El servidor está preparado para aceptar conexiones tanto de IPv4 como de IPv6.
+        El selector ayuda a manejar estas dos pilas de red de forma transparente.
+        Basicamente este selector alterna entre las conexiones de IPv4, IPv6 y
+        proximamente el servicio para el managment.
+    */
+
+    /* Método de utilidad que activa O_NONBLOCK en un fd. */
+    /* Las operaciones de w/r sobre ese 'archivo' se convierten en no bloqueantes. */
+    if (selector_fd_set_nio(server) < 0)
+    {
+        *err_msg = "unable to set server socket as non-blocking";
+        return -1;
+    }
+
+    return server;
+}
+
+int set_up_ipv6_server(int port, const char** err_msg)
+{
+    struct sockaddr_in6 addr_6;
+    memset(&addr_6, 0, sizeof(addr_6));
+    addr_6.sin6_family = AF_INET6;
+    addr_6.sin6_addr = in6addr_any;
+    addr_6.sin6_port = htons(args->server_port);
+
+    
+    const int server_6 = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+    if (server_6 < 0)
+    {
+        *err_msg = "unable to create IPv6 socket.";
+        return -1;
+    }
+
+    log(LOG_DEBUG, "Setting IPV6_V6ONLY and SO_REUSEADDR on IPv6 socket");
+    setsockopt(server_6, IPPROTO_IPV6, IPV6_V6ONLY, &(int){1}, sizeof(int));
+    setsockopt(server_6, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)); // en caso de abortar, reusar direccion y puerto
+
+    log(LOG_DEBUG, "Binding IPv6 socket");
+    if (bind(server_6, (struct sockaddr *)&addr_6, sizeof(addr_6)) < 0)
+    {
+        *err_msg = "unable to bind socket";
+        return -1;
+    }
+
+    log(LOG_DEBUG, "Listening IPv6 socket");
+    if (listen(server_6, MAX_PENDING_CONNECTIONS) < 0)
+    {
+        *err_msg = "unable to listen";
+        return -1;
+    }
+
+    if (selector_fd_set_nio(server_6) < 0)
+    {
+        *err_msg = "unable to set server socket as non-blocking";
+        return -1;
+    }
+
+    return server_6;
+}
+
 int main(const int argc, char **argv)
 {
     // Registramos handlers para terminar normalmente en caso de una signal
@@ -153,96 +255,14 @@ int main(const int argc, char **argv)
     setvbuf(stdout, NULL, _IONBF, 0);
 
     // ------------------ Inicialización del servidor ------------------ //
+    int server = set_up_ipv4_server(args->server_port, &err_msg);
+    int server_6 = set_up_ipv6_server(args->server_port, &err_msg);
 
-    // Address para hacer el bind del socket.
-    // Creamos para el servidor con IPv4 y IPv6, mismo puerto.
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;                // IPv4
-    addr.sin_addr.s_addr = htonl(INADDR_ANY); // Todas las interfaces (escucha por cualquier IP)
-    addr.sin_port = htons(args->server_port); // Server port
-
-    struct sockaddr_in6 addr_6;
-    memset(&addr_6, 0, sizeof(addr_6));
-    addr_6.sin6_family = AF_INET6;
-    addr_6.sin6_addr = in6addr_any;
-    addr_6.sin6_port = htons(args->server_port);
-
-    // Pasive server sockets
-    const int server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (server < 0)
+    if (server < 0 || server_6 < 0)
     {
-        err_msg = "unable to create IPv4 socket";
         goto finally;
     }
 
-    const int server_6 = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-    if (server_6 < 0)
-    {
-        err_msg = "unable to create IPv6 socket.";
-        goto finally;
-    }
-
-    logf(LOG_DEBUG, "Listening on TCP port %d", args->server_port);
-    fprintf(stdout, "Listening on TCP port %d\n", args->server_port);
-
-    // man 7 ip. no importa reportar nada si falla.
-    log(LOG_DEBUG, "Setting SO_REUSEADDR on IPv4 socket");
-    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));   // en caso de abortar, reusar direccion y puerto
-    log(LOG_DEBUG, "Setting IPV6_V6ONLY and SO_REUSEADDR on IPv6 socket");
-    setsockopt(server_6, IPPROTO_IPV6, IPV6_V6ONLY, &(int){1}, sizeof(int));
-    setsockopt(server_6, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)); // en caso de abortar, reusar direccion y puerto
-
-    // bind server sockets to port
-    log(LOG_DEBUG, "Binding IPv4 socket");
-    if (bind(server, (struct sockaddr *)&addr, sizeof(addr)) < 0)
-    {
-        err_msg = "unable to bind socket";
-        goto finally;
-    }
-
-    log(LOG_DEBUG, "Binding IPv6 socket");
-    if (bind(server_6, (struct sockaddr *)&addr_6, sizeof(addr_6)) < 0)
-    {
-        err_msg = "unable to bind socket";
-        goto finally;
-    }
-
-    // listen for incoming connections.
-    log(LOG_DEBUG, "Listening IPv4 socket");
-    if (listen(server, MAX_PENDING_CONNECTIONS) < 0)
-    {
-        err_msg = "unable to listen";
-        goto finally;
-    }
-
-    log(LOG_DEBUG, "Listening IPv6 socket");
-    if (listen(server_6, MAX_PENDING_CONNECTIONS) < 0)
-    {
-        err_msg = "unable to listen";
-        goto finally;
-    }
-
-    /*
-        El servidor está preparado para aceptar conexiones tanto de IPv4 como de IPv6.
-        El selector ayuda a manejar estas dos pilas de red de forma transparente.
-        Basicamente este selector alterna entre las conexiones de IPv4, IPv6 y
-        proximamente el servicio para el managment.
-    */
-
-    /* Método de utilidad que activa O_NONBLOCK en un fd. */
-    /* Las operaciones de w/r sobre ese 'archivo' se convierten en no bloqueantes. */
-    if (selector_fd_set_nio(server) < 0)
-    {
-        err_msg = "unable to set server socket as non-blocking";
-        goto finally;
-    }
-
-    if (selector_fd_set_nio(server_6) < 0)
-    {
-        err_msg = "unable to set server socket as non-blocking";
-        goto finally;
-    }
 
     // Registramos el socket pasivo dentro del selector.
     // El selector se encargará de monitorear los eventos de este socket.

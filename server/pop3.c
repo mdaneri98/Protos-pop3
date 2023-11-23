@@ -120,6 +120,13 @@ connection_data *pop3_init(void *data)
     conn->is_finished = false;
     conn->command_error = false;
 
+    conn->current_session.mails = NULL;
+    conn->current_session.maildir[0] = '\0';
+    conn->current_session.username[0] = '\0';
+    conn->current_session.mail_count = 0;
+    conn->current_session.maildir_size = 0;
+    conn->current_session.requested_quit = false;
+
     conn->args = (struct args *)data;
 
     log(LOG_DEBUG, "Finished initializing structure");
@@ -184,7 +191,8 @@ static void handle_read(struct selector_key *key)
     /* Indicamos que ocurrió el evento read.
         Se ejecuta la función 'on_read_ready' para el estado actual de la maquina de estados
     */
-    stm_handler_read(&((struct connection_data *)key->data)->stm, key);
+    struct connection_data * connection = (struct connection_data* )key->data;
+    stm_handler_read(&connection->stm, key);
 }
 
 static void handle_write(struct selector_key *key)
@@ -192,7 +200,27 @@ static void handle_write(struct selector_key *key)
     /* Indicamos que ocurrió el evento write, para el socket con fd de key->fd
         Se ejecuta la función 'on_write_ready' para el estado actual de la maquina de estados
     */
-    stm_handler_write(&((struct connection_data *)key->data)->stm, key);
+    struct connection_data * connection = (struct connection_data* )key->data;
+    stm_handler_write(&connection->stm, key);
+
+    size_t read_bytes;
+    char * ptr = (char *) buffer_read_ptr(&connection->out_buff_object, &read_bytes);
+    ssize_t n = send(key->fd, ptr, read_bytes, 0);
+    if (n == -1) {
+        selector_unregister_fd(key->s, key->fd);
+        return;
+    }
+    buffer_read_adv(&connection->out_buff_object, n);
+
+
+    if (connection->current_session.requested_quit) {
+        selector_unregister_fd(key->s, key->fd);
+    } else if (buffer_can_read(&connection->in_buff_object)) {
+        selector_set_interest_key(key, OP_NOOP);
+        stm_handler_read(&connection->stm, key);
+    } else {
+        selector_set_interest_key(key, OP_READ);
+    }
 }
 
 /* Llamado al realizar QUIT o terminar la conexión. */
