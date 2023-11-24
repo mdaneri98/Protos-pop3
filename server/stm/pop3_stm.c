@@ -231,29 +231,68 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
         try_write(msj, &(conn->out_buff_object));
     }
 
-    char *ptr;
-    size_t n;
-    ptr = (char *)buffer_write_ptr(&conn->out_buff_object, &n);
-
+    size_t n;    
+    buffer_write_ptr(&conn->out_buff_object, &n);
     size_t file_size = conn->current_session.mails[mail_number - 1].size;
-    if (file_size - conn->current_session.mails[mail_number - 1].read_index + 6 <= n)
+    size_t read_i = conn->current_session.mails[mail_number - 1].read_index;
+    char* end_msj = "\r\n.\r\n";
+    size_t end_msj_len = strlen(end_msj);
+    
+    char* ptr = malloc(n * sizeof(char));
+    if (file_size - read_i + end_msj_len + 1 <= n)
     {
         fseek(mail_file, conn->current_session.mails[mail_number - 1].read_index, SEEK_SET);
-        size_t bytes_read = fread(ptr, sizeof(char), n - 1, mail_file);
-        buffer_write_adv(&conn->out_buff_object, bytes_read);
+        int bytes_read = (int) fread(ptr, sizeof(char), n - 1, mail_file);
+        char byte;
+        int i = 0;
+        while (i < bytes_read)
+        {
+            byte = ptr[i];
+            if (byte == '\r') {
+                conn->crlf_flag = CR;
+            } else if (byte == '\n' && conn->crlf_flag == CR) {
+                conn->crlf_flag = LF;
+            } else if (byte == '.' && conn->crlf_flag == LF) {
+                buffer_write(&conn->out_buff_object, '.');
+            } else {
+                conn->crlf_flag = ANY_CHARACTER;
+            }
+            buffer_write(&conn->out_buff_object, byte);
+            conn->current_session.mails[mail_number - 1].read_index += 1;
+            i++;
+        }
         fclose(mail_file);
-        try_write("\r\n.\r\n", &(conn->out_buff_object));
+        try_write(end_msj, &(conn->out_buff_object));
         conn->is_finished = true;
         conn->current_session.mails[mail_number - 1].read_index = 0;
         return TRANSACTION;
     }
+    
 
+    // Leemos de donde dejamos. 
     fseek(mail_file, conn->current_session.mails[mail_number - 1].read_index, SEEK_SET);
-    size_t bytes_read = fread(ptr, sizeof(char), n, mail_file);
-    buffer_write_adv(&conn->out_buff_object, bytes_read);
-    fclose(mail_file);
+    int bytes_read = (int) fread(ptr, sizeof(char), n - 1, mail_file);
+    char byte;
+    int i = 0;
+    while (i < bytes_read) 
+    {
+        byte = ptr[i];
+        if (byte == '\r') {
+            conn->crlf_flag = CR;
+        } else if (byte == '\n' && conn->crlf_flag == CR) {
+            conn->crlf_flag = LF;
+        } else if (byte == '.' && conn->crlf_flag == LF) {
+            buffer_write(&conn->out_buff_object, '.');
+        } else {
+            conn->crlf_flag = ANY_CHARACTER;
+        }
+        buffer_write(&conn->out_buff_object, byte);
+        conn->current_session.mails[mail_number - 1].read_index += 1;
+        i++;
+    }
+    free(ptr);
     conn->is_finished = false;
-    conn->current_session.mails[mail_number - 1].read_index += n;
+    fclose(mail_file);
     return TRANSACTION;
 }
 

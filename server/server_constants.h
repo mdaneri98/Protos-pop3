@@ -46,6 +46,13 @@ typedef enum
     PARSER_STATES_COUNT
 } parser_states;
 
+typedef enum {
+    ANY_CHARACTER,
+    CR,
+    LF,
+    DOT
+} crlf_flag;
+
 typedef enum
 {
     UNDEFINED,
@@ -79,6 +86,8 @@ typedef struct connection_data
     buffer out_buff_object;
     struct users *user;
     struct args *args;
+
+    crlf_flag crlf_flag;
 
     char current_command[COMMAND_LENGTH + 1];
     char argument[ARGUMENT_LENGTH + 1];
