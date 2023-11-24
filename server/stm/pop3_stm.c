@@ -312,7 +312,7 @@ stm_states dele_handler(struct selector_key *key, connection_data *conn)
     conn->current_session.maildir_size -= conn->current_session.mails[mail_number - 1].size;
 
     char msj[100];
-    sprintf(msj, "+OK message %d deleted\r\n", (int)mail_number);
+    sprintf(msj, "+OK message %d deleted\r\n.\r\n", (int)mail_number);
     try_write(msj, &(conn->out_buff_object));
     return TRANSACTION;
 }
