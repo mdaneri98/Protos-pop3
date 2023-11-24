@@ -15,30 +15,31 @@
 extern struct args *args;
 extern struct stats *stats;
 
-typedef enum try_state
-{
-    TRY_DONE,
-    TRY_PENDING
-} try_state;
-
-try_state try_write(const char *str, buffer *buff)
+size_t try_write(const char *str, buffer *buff)
 {
     size_t max = 0;
-    uint8_t *ptr = buffer_write_ptr(buff, &max);
     size_t message_len = strlen(str);
-    // Manda el mensaje parcialmente si no hay espacio
+    uint8_t *ptr = buffer_write_ptr(buff, &max);
+    if (max < message_len)
+    {
+        // Manda el mensaje parcialmente si no hay espacio
+        memcpy(ptr, str, max);
+        //    strncpy((char*)ptr, str, message_len);
+        buffer_write_adv(buff, max);
+        return max;
+    }
     memcpy(ptr, str, message_len);
     //    strncpy((char*)ptr, str, message_len);
-    buffer_write_adv(buff, (ssize_t)message_len);
-    return TRY_DONE;
+    buffer_write_adv(buff, message_len);
+    return message_len;
 }
 
 stm_states user_handler(struct selector_key *key, connection_data *conn)
 {
     log(LOG_DEBUG, "FD %d: USER command");
 
-    struct users *users = conn->args->users;
-    size_t users_count = conn->args->users_count;
+    struct users *users = args->users;
+    size_t users_count = args->users_count;
 
     // The server may return a positive response even though no
     // such mailbox exists.
@@ -80,8 +81,8 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
     }
 
     bool authenticated = false;
-    struct users *users = conn->args->users;
-    size_t users_count = conn->args->users_count;
+    struct users *users = args->users;
+    size_t users_count = args->users_count;
     for (size_t i = 0; i < users_count; i++)
     {
         // Si el usuario existe, seteamos el maildir y el username en la sesion actual.
@@ -97,14 +98,13 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
     if (authenticated)
     {
         char base_directory[PATH_SIZE];
-        strcpy(base_directory, conn->args->mail_directory);
+        strcpy(base_directory, args->mail_directory);
 
         conn->current_session.maildir[0] = '\0';
         strcat(conn->current_session.maildir, base_directory);
         strcat(conn->current_session.maildir, "/");
         strcat(conn->current_session.maildir, conn->user->name);
         strcat(conn->current_session.maildir, "/cur");
-        printf("Newly maildir: %s\n", conn->current_session.maildir);
 
         DIR *directory = opendir(conn->current_session.maildir);
         if (directory == NULL)
@@ -213,7 +213,6 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
     }
 
     char mail_path[PATH_SIZE];
-    printf("maildir: %s\n", conn->current_session.mails[0].path);
     strcpy(mail_path, conn->current_session.mails[mail_number - 1].path);
 
     FILE *mail_file = fopen(mail_path, "r");
@@ -339,7 +338,6 @@ stm_states quit_handler(struct selector_key *key, connection_data *conn)
                     args->users[i].logged_in = false;
                 }
             }
-            printf("Libero recursos\n");
             if (conn->current_session.mails != NULL)
             {
                 free(conn->current_session.mails);
@@ -664,7 +662,7 @@ void stm_transaction_arrival(stm_states state, struct selector_key *key)
 
     DIR *directory = opendir(connection->current_session.maildir);
     struct dirent *file;
-    while (connection->current_session.mail_count < connection->args->max_mails && (file = readdir(directory)) != NULL)
+    while (connection->current_session.mail_count < args->max_mails && (file = readdir(directory)) != NULL)
     {
         if (strcmp(".", file->d_name) == 0 || strcmp("..", file->d_name) == 0)
         {

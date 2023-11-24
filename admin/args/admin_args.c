@@ -147,9 +147,9 @@ void parse_args(const int argc, char **argv, struct args * args) {
                 args->arguments_count++;
                 break;
             case 'm':
-                strcpy(args->arguments[REMOVE_USER].name, "change-maildir");
-                strcpy(args->arguments[REMOVE_USER].key, optarg);
-                strcpy(args->arguments[REMOVE_USER].value, "");
+                strcpy(args->arguments[CHANGE_MAILDIR].name, "change-maildir");
+                strcpy(args->arguments[CHANGE_MAILDIR].key, optarg);
+                strcpy(args->arguments[CHANGE_MAILDIR].value, "");
                 args->arguments_count++;
                 break;
             case 'r':

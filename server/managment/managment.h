@@ -5,7 +5,8 @@
 #include "../../lib/selector.h"
 
 #define DEFAULT_SIZE 256
-#define MAX_ARGUMENTS 12
+#define MAX_ARGUMENTS 13
+
 
 typedef enum args_type {
     HELP,

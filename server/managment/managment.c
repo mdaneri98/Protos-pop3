@@ -39,7 +39,7 @@ bool add_user_action(char* out_buffer, struct argument* argument) {
         return false;
     }
 
-    strcpy(out_buffer, "OK+ Added new user. ");
+    strcpy(out_buffer, "OK+ Added new user.\r\n");
     strcpy(args->users[args->users_count].name, argument->key);
     strcpy(args->users[args->users_count].pass, argument->value);
     args->users_count++;
@@ -174,6 +174,10 @@ bool stat_bytes_transferred_action(char* out_buffer, struct argument* argument) 
 
 static struct command commands[] = {
         {
+                .name = "help",
+                .action = NULL
+        },
+        {
             .name = "add-user",
             .action = add_user_action
         },
@@ -285,7 +289,7 @@ void receive_managment_message(struct selector_key *key)
         return;
     }
 
-    log(LOG_DEBUG, "Received message from client");
+    log(LOG_INFO, "Received message from client");
     struct argument* arg = parse_request(read_buffer, numBytesRcvd);
 
     if (strcmp(global_args->token, arg->token) != 0)
@@ -299,7 +303,7 @@ void receive_managment_message(struct selector_key *key)
     for (int i = 0; i < MAX_ARGUMENTS; i++) {
         if (strcmp(arg->name, commands[i].name) == 0)
         {
-            logf(LOG_DEBUG, "Executing command %s\n", commands[i].name);
+            logf(LOG_DEBUG, "Executing command %s", commands[i].name);
             commands[i].action(write_buffer, arg);
             break;
         }

@@ -21,7 +21,7 @@ typedef enum args_type {
     STAT_BYTES_TRANSFERRED
 } args_type;
 
-
+#define MAX_ARGUMENTS 13
 
 struct argument {
     char name[DEFAULT_SIZE];

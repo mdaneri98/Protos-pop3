@@ -97,7 +97,7 @@ int main(const int argc, char **argv)
        
         sprintf(
             command,
-            "token %s %s|%s:%s\r\n",
+            "token %s %s|%s:%s",
             *args->arguments[TOKEN].key ? args->arguments[TOKEN].key : "not-given",
             *args->arguments[i].name ? args->arguments[i].name : "not-given",
             *args->arguments[i].key ? args->arguments[i].key : "not-given",

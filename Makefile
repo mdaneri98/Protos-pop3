@@ -11,7 +11,7 @@ SERVER_OBJS = $(SERVER_DIR)/args/args.o $(SERVER_DIR)/parser/pop3_parser.o $(SER
 CLIENT_OBJS = $(CLIENT_DIR)/args/admin_args.o $(CLIENT_DIR)/admin.o
 ALL_OBJS = $(LIB_OBJS) $(SERVER_OBJS) $(CLIENT_OBJS)
 
-SERVER = pop3
+SERVER = pop3d
 CLIENT = client
 
 .PHONY: all clean
