@@ -672,17 +672,12 @@ void stm_transaction_arrival(stm_states state, struct selector_key *key)
 
         size_t i = connection->current_session.mail_count;
 
-        printf("%s\n", connection->current_session.mails == NULL ? "si" : "no");
         if (connection->current_session.mails == NULL)
         {
             printf("Se caloqueo %d\n", (int)args->max_mails);
             connection->current_session.mails = calloc(args->max_mails, sizeof(struct mail));
         }
-        printf("Accediendo a current_session.mails[%d]\n", (int)i);
-        printf("Accediendo a current_session.mails[%d]: %s\n", (int)i, connection->current_session.mails[i].path);
-
-        printf("Accediendo a current_session.maildir: %s\n", connection->current_session.maildir);
-
+        
         strcat(connection->current_session.mails[i].path, connection->current_session.maildir);
         strcat(connection->current_session.mails[i].path, "/");
         strcat(connection->current_session.mails[i].path, file->d_name);
