@@ -188,6 +188,10 @@ stm_states list_handler(struct selector_key *key, connection_data *conn)
         }
         index++;
     }
+
+    sprintf(msg, ".\r\n");
+    try_write(msg, &(conn->out_buff_object));
+
     return TRANSACTION;
 }
 
@@ -393,9 +397,15 @@ stm_states quit_handler(struct selector_key *key, connection_data *conn)
 stm_states capa_handler(struct selector_key *key, connection_data *conn)
 {
     logf(LOG_DEBUG, "FD %d: CAPA command", key->fd);
-    char msj[25];
-    sprintf(msj, "+OK\r\nUSER\r\nPIPELINING\r\n");
-    try_write(msj, &(conn->out_buff_object));
+    
+    char * message = "+OK\r\nUSER\r\nPIPELINING\r\n.\r\n";
+    
+    try_write(message, &(conn->out_buff_object));
+    selector_set_interest_key(key, OP_READ);
+    if (conn->stm.current->state == AUTHORIZATION)
+    {
+        return AUTHORIZATION;
+    }
     return conn->stm.current->state;
 }
 
@@ -702,7 +712,6 @@ void stm_transaction_arrival(stm_states state, struct selector_key *key)
 
         if (connection->current_session.mails == NULL)
         {
-            printf("Se caloqueo %d\n", (int)args->max_mails);
             connection->current_session.mails = calloc(args->max_mails, sizeof(struct mail));
         }
 

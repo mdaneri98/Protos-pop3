@@ -31,7 +31,7 @@
 #define MAX_PENDING_CONNECTIONS 24
 #define INITIAL_FDS 1024
 
-#define LOGGER_LEVEL LOG_INFO
+#define LOGGER_LEVEL LOG_DEBUG
 
 struct args *args;
 struct stats *stats;
