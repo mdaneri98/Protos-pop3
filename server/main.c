@@ -41,7 +41,7 @@ int done = false;
 
 void sigterm_handler(const int signal)
 {
-    printf("signal %d, cleaning up and exiting\n", signal);
+    logf(LOG_DEBUG, "signal %d, cleaning up and exiting\n", signal);
     done = true;
 }
 
