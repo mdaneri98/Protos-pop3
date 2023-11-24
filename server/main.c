@@ -31,8 +31,7 @@
 #define MAX_PENDING_CONNECTIONS 24
 #define INITIAL_FDS 1024
 
-// FIXME: ! Cambiar antes de presentar el TP.
-#define LOGGER_LEVEL 0
+#define LOGGER_LEVEL LOG_INFO
 
 struct args *args;
 struct stats *stats;
@@ -41,7 +40,7 @@ int done = false;
 
 void sigterm_handler(const int signal)
 {
-    logf(LOG_DEBUG, "signal %d, cleaning up and exiting\n", signal);
+    logf(LOG_INFO, "signal %d, cleaning up and exiting\n", signal);
     done = true;
 }
 
@@ -64,7 +63,7 @@ int set_up_managment_server()
     }
 
     // bind server sockets to port
-    logf(LOG_DEBUG, "Binding IPv4 managment socket at port %d", args->client_port);
+    logf(LOG_INFO, "Binding IPv4 managment socket at port %d", args->client_port);
     if (bind(server, (struct sockaddr *)&addr, sizeof(addr)) < 0)
     {
         err_msg = "unable to bind socket";
@@ -103,15 +102,15 @@ int set_up_ipv4_server(int port, const char **err_msg)
         return -1;
     }
 
-    logf(LOG_DEBUG, "Listening on TCP port %d", args->server_port);
+    logf(LOG_INFO, "Listening on TCP port %d", args->server_port);
     fprintf(stdout, "Listening on TCP port %d\n", args->server_port);
 
     // man 7 ip. no importa reportar nada si falla.
-    log(LOG_DEBUG, "Setting SO_REUSEADDR on IPv4 socket");
+    log(LOG_INFO, "Setting SO_REUSEADDR on IPv4 socket");
     setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)); // en caso de abortar, reusar direccion y puerto
 
     // bind server sockets to port
-    log(LOG_DEBUG, "Binding IPv4 socket");
+    log(LOG_INFO, "Binding IPv4 socket");
     if (bind(server, (struct sockaddr *)&addr, sizeof(addr)) < 0)
     {
         *err_msg = "unable to bind socket";
@@ -119,7 +118,7 @@ int set_up_ipv4_server(int port, const char **err_msg)
     }
 
     // listen for incoming connections.
-    log(LOG_DEBUG, "Listening IPv4 socket");
+    log(LOG_INFO, "Listening IPv4 socket");
     if (listen(server, MAX_PENDING_CONNECTIONS) < 0)
     {
         *err_msg = "unable to listen";
@@ -159,18 +158,18 @@ int set_up_ipv6_server(int port, const char **err_msg)
         return -1;
     }
 
-    log(LOG_DEBUG, "Setting IPV6_V6ONLY and SO_REUSEADDR on IPv6 socket");
+    log(LOG_INFO, "Setting IPV6_V6ONLY and SO_REUSEADDR on IPv6 socket");
     setsockopt(server_6, IPPROTO_IPV6, IPV6_V6ONLY, &(int){1}, sizeof(int));
     setsockopt(server_6, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)); // en caso de abortar, reusar direccion y puerto
 
-    log(LOG_DEBUG, "Binding IPv6 socket");
+    log(LOG_INFO, "Binding IPv6 socket");
     if (bind(server_6, (struct sockaddr *)&addr_6, sizeof(addr_6)) < 0)
     {
         *err_msg = "unable to bind socket";
         return -1;
     }
 
-    log(LOG_DEBUG, "Listening IPv6 socket");
+    log(LOG_INFO, "Listening IPv6 socket");
     if (listen(server_6, MAX_PENDING_CONNECTIONS) < 0)
     {
         *err_msg = "unable to listen";
@@ -243,14 +242,14 @@ int main(const int argc, char **argv)
     args = malloc(sizeof(struct args));
     if (args == NULL)
     {
-        log(LOG_DEBUG, "Unable to allocate memory for args\n");
+        log(LOG_INFO, "Unable to allocate memory for args\n");
         return 1;
     }
 
     parse_args(argc, argv, args);
 
     // No hacer buffering en la salida estándar.
-    log(LOG_DEBUG, "Removing buffering to stdout");
+    log(LOG_INFO, "Removing buffering to stdout");
     setvbuf(stdout, NULL, _IONBF, 0);
 
     // ------------------ Inicialización del servidor ------------------ //
@@ -271,13 +270,13 @@ int main(const int argc, char **argv)
     };
 
     // Registramos el socket pasivo en el selector
-    log(LOG_DEBUG, "Registering IPv4 server fd") if (SELECTOR_SUCCESS != selector_register(selector, server, &server_handler, OP_READ, args))
+    log(LOG_INFO, "Registering IPv4 server fd") if (SELECTOR_SUCCESS != selector_register(selector, server, &server_handler, OP_READ, args))
     {
         err_msg = "unable to register server fd for IPv4 socket.";
         goto finally;
     }
 
-    log(LOG_DEBUG, "Registering IPv6 server fd") if (SELECTOR_SUCCESS != selector_register(selector, server_6, &server_handler, OP_READ, args))
+    log(LOG_INFO, "Registering IPv6 server fd") if (SELECTOR_SUCCESS != selector_register(selector, server_6, &server_handler, OP_READ, args))
     {
         err_msg = "unable to register server fd for IPv4 socket.";
         goto finally;
@@ -297,7 +296,7 @@ int main(const int argc, char **argv)
         goto finally;
     }
 
-    logf(LOG_DEBUG, "Registering IPv4 managment server fd: %d", client_socket) if (SELECTOR_SUCCESS != selector_register(selector, client_socket, &client_handler, OP_READ, args))
+    logf(LOG_INFO, "Registering IPv4 managment server fd: %d", client_socket) if (SELECTOR_SUCCESS != selector_register(selector, client_socket, &client_handler, OP_READ, args))
     {
         err_msg = "unable to register server fd for IPv4 managment socket.";
         goto finally;

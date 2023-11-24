@@ -12,7 +12,7 @@ CLIENT_OBJS = $(CLIENT_DIR)/args/admin_args.o $(CLIENT_DIR)/admin.o
 ALL_OBJS = $(LIB_OBJS) $(SERVER_OBJS) $(CLIENT_OBJS)
 
 SERVER = pop3d
-CLIENT = admin
+CLIENT = client
 
 .PHONY: all clean
 
