@@ -294,7 +294,6 @@ void receive_managment_message(struct selector_key *key)
 
     if (strcmp(global_args->token, arg->token) != 0)
     {
-        logf(LOG_DEBUG, "Invalid token %s[CLIENT] != %s[SERVER]", arg->token, global_args->token);
         strcpy(write_buffer, "-ERR. Invalid token ");
         goto send;
     }

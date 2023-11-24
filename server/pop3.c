@@ -117,7 +117,6 @@ connection_data *pop3_init(void *data)
     conn->argument[0] = '\0';
     conn->argument_length = 0;
     conn->is_finished = true;
-    conn->command_error = false;
 
     conn->current_session.mails = NULL;
     conn->current_session.maildir[0] = '\0';
@@ -230,7 +229,8 @@ static void handle_write(struct selector_key *key)
 /* Llamado al realizar QUIT o terminar la conexión. */
 static void handle_close(struct selector_key *key)
 {
-    connection_data *conn = key->data;
+    struct connection_data *conn = (struct connection_data *) key->data;
+    logf(LOG_INFO, "Closing connection with fd %d", conn->connection_fd);
 
     stats->concurrent_connections--;
     close(key->fd);

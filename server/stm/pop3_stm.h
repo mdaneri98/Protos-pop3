@@ -8,14 +8,7 @@ typedef enum
     REQUIRED
 } argument_type;
 
-/*
-typedef enum stm_state {
-    AUTHENTICATION,
-    TRANSACTION,
-    QUIT,
-    ERROR
-} stm_state;
-*/
+
 
 void stm_authorization_arrival(stm_states state, struct selector_key *key);
 void stm_authorization_departure(stm_states state, struct selector_key *key);
