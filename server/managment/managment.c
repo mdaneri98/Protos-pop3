@@ -19,22 +19,24 @@ extern struct args *args;
 extern struct stats *stats;
 extern int done;
 
-
-struct command {
+struct command
+{
     char *name;
-    bool (*action)(char* out_buffer, struct argument* argument);
+    bool (*action)(char *out_buffer, struct argument *argument);
 };
 
-
-bool add_user_action(char* out_buffer, struct argument* argument) {
+bool add_user_action(char *out_buffer, struct argument *argument)
+{
     log(LOG_DEBUG, "Client Request: Add User");
 
-    if (args->users_count == MAX_USERS) {
+    if (args->users_count == MAX_USERS)
+    {
         strcpy(out_buffer, "-ERR. Maxium amount of users reached.\r\n");
         return false;
     }
 
-    if (argument->key[0] == '\0' || argument->value[0] == '\0') {
+    if (argument->key[0] == '\0' || argument->value[0] == '\0')
+    {
         strcpy(out_buffer, "-ERR. User or password not given.\r\n");
         return false;
     }
@@ -46,10 +48,12 @@ bool add_user_action(char* out_buffer, struct argument* argument) {
 
     return true;
 }
-bool remove_user_action(char* out_buffer, struct argument* argument) {
+bool remove_user_action(char *out_buffer, struct argument *argument)
+{
     log(LOG_DEBUG, "Client Request: Remove User");
 
-    if (args->users_count == 0 || argument->key[0] == '\0') {
+    if (args->users_count == 0 || argument->key[0] == '\0')
+    {
         strcpy(out_buffer, "-ERR. Can't remove user.\r\n");
         return false;
     }
@@ -68,18 +72,19 @@ bool remove_user_action(char* out_buffer, struct argument* argument) {
     return true;
 }
 
-bool token_action(char* out_buffer, struct argument* argument)
+bool token_action(char *out_buffer, struct argument *argument)
 {
     log(LOG_DEBUG, "Client Request: Token validation");
     // Nothing to do.
     return true;
 }
 
-bool change_pass_action(char* out_buffer, struct argument* argument)
+bool change_pass_action(char *out_buffer, struct argument *argument)
 {
-     log(LOG_DEBUG, "Client Request: Change password");
+    log(LOG_DEBUG, "Client Request: Change password");
 
-    if (args->users_count == 0 || argument->key[0] == '\0' || argument->value[0] == '\0') {
+    if (args->users_count == 0 || argument->key[0] == '\0' || argument->value[0] == '\0')
+    {
         strcpy(out_buffer, "-ERR. Can change user password.\r\n");
         return false;
     }
@@ -96,11 +101,12 @@ bool change_pass_action(char* out_buffer, struct argument* argument)
     return true;
 }
 
-bool change_maildir_action(char* out_buffer, struct argument* argument) 
+bool change_maildir_action(char *out_buffer, struct argument *argument)
 {
     log(LOG_DEBUG, "Client Request: Change maildir");
 
-    if (argument->key[0] == '\0') {
+    if (argument->key[0] == '\0')
+    {
         strcpy(out_buffer, "-ERR. Can't change maildir.\r\n");
         return false;
     }
@@ -110,26 +116,29 @@ bool change_maildir_action(char* out_buffer, struct argument* argument)
     return true;
 }
 
-bool version_action(char* out_buffer, struct argument* argument) {
+bool version_action(char *out_buffer, struct argument *argument)
+{
     strcpy(
-            out_buffer, "OK+ POP3 Server v1.0 | ITBA - 72.07 Protocolos de Comunicación 2023 2Q.\r\n"
-    );
+        out_buffer, "OK+ POP3 Server v1.0 | ITBA - 72.07 Protocolos de Comunicación 2023 2Q.\r\n");
     return true;
 }
 
-bool get_max_mails_action(char* out_buffer, struct argument* argument) {
+bool get_max_mails_action(char *out_buffer, struct argument *argument)
+{
     log(LOG_DEBUG, "Client Request: Get max mails");
 
     char msj[25];
-    sprintf(msj, "OK+ Max mails: %d.\r\n", (int) args->max_mails);
+    sprintf(msj, "OK+ Max mails: %d.\r\n", (int)args->max_mails);
     strcpy(out_buffer, msj);
     return true;
 }
 
-bool set_max_mails_action(char* out_buffer, struct argument* argument) {
+bool set_max_mails_action(char *out_buffer, struct argument *argument)
+{
     log(LOG_DEBUG, "Client Request: Get max mails");
 
-    if (argument->key[0] == '\0') {
+    if (argument->key[0] == '\0')
+    {
         strcpy(out_buffer, "-ERR. Can't set max mails\r\n");
         return false;
     }
@@ -138,14 +147,17 @@ bool set_max_mails_action(char* out_buffer, struct argument* argument) {
     if (args->max_mails > 0)
     {
         strcpy(out_buffer, "OK+ Max mails changed.\r\n");
-    } else {
+    }
+    else
+    {
         strcpy(out_buffer, "-ERR. Can't set max mails.\r\n");
         return false;
     }
     return true;
 }
 
-bool stat_historic_connections_action(char* out_buffer, struct argument* argument) {
+bool stat_historic_connections_action(char *out_buffer, struct argument *argument)
+{
     log(LOG_DEBUG, "Client Request: Historic connections");
 
     char msj[100];
@@ -154,7 +166,8 @@ bool stat_historic_connections_action(char* out_buffer, struct argument* argumen
     return true;
 }
 
-bool stat_current_connections_action(char* out_buffer, struct argument* argument) {
+bool stat_current_connections_action(char *out_buffer, struct argument *argument)
+{
     log(LOG_DEBUG, "Client Request: Current connections");
 
     char msj[100];
@@ -163,7 +176,8 @@ bool stat_current_connections_action(char* out_buffer, struct argument* argument
     return true;
 }
 
-bool stat_bytes_transferred_action(char* out_buffer, struct argument* argument) {
+bool stat_bytes_transferred_action(char *out_buffer, struct argument *argument)
+{
     log(LOG_DEBUG, "Client Request: Bytes transferred");
 
     char msj[100];
@@ -173,64 +187,40 @@ bool stat_bytes_transferred_action(char* out_buffer, struct argument* argument) 
 }
 
 static struct command commands[] = {
-        {
-                .name = "help",
-                .action = NULL
-        },
-        {
-            .name = "add-user",
-            .action = add_user_action
-        },
-        {
-            .name = "change-pass",
-            .action = change_pass_action
-        },
-        {
-            .name = "change-maildir",
-            .action = change_maildir_action
-        },
-        {
-            .name = "remove-user",
-            .action = remove_user_action
-        },
-        {
-            .name = "token",
-            .action = token_action
-        },
-        {
-            .name = "version",
-            .action = version_action
-        },
-        {
-            .name = "get-max-mails",
-            .action = get_max_mails_action
-        },
-        {
-            .name = "set-max-mails",
-            .action = set_max_mails_action
-        },
-        {
-            .name = "stat-historic-connections",
-            .action = stat_historic_connections_action
-        },
-        {
-            .name = "stat-current-connections",
-            .action = stat_current_connections_action
-        },
-        {
-            .name = "stat-bytes-transferred",
-            .action = stat_bytes_transferred_action
-        }
-};
+    {.name = "help",
+     .action = NULL},
+    {.name = "add-user",
+     .action = add_user_action},
+    {.name = "change-pass",
+     .action = change_pass_action},
+    {.name = "change-maildir",
+     .action = change_maildir_action},
+    {.name = "remove-user",
+     .action = remove_user_action},
+    {.name = "token",
+     .action = token_action},
+    {.name = "version",
+     .action = version_action},
+    {.name = "get-max-mails",
+     .action = get_max_mails_action},
+    {.name = "set-max-mails",
+     .action = set_max_mails_action},
+    {.name = "stat-historic-connections",
+     .action = stat_historic_connections_action},
+    {.name = "stat-current-connections",
+     .action = stat_current_connections_action},
+    {.name = "stat-bytes-transferred",
+     .action = stat_bytes_transferred_action}};
 
-static struct argument* parse_request(char *buffer, ssize_t numBytesRcvd) {
-    struct argument* argument = malloc(sizeof(struct argument));
-    
+static struct argument *parse_request(char *buffer, ssize_t numBytesRcvd)
+{
+    struct argument *argument = malloc(sizeof(struct argument));
+
     // Inicialización de arguments
     argument->token[0] = '\0';
     argument->value[0] = '\0';
     argument->name[0] = '\0';
-    argument->key[0] =  '\0';
+    argument->key[0] = '\0';
 
     /* token exampleName|exampleKey:exampleValue */
 
@@ -239,25 +229,30 @@ static struct argument* parse_request(char *buffer, ssize_t numBytesRcvd) {
     char *part = strtok_r(buffer, " ", &next_token);
 
     // Procesar la palabra 'token'
-    if (part != NULL && strcmp(part, "token") == 0) {
+    if (part != NULL && strcmp(part, "token") == 0)
+    {
         // Procesar el valor del token
         part = strtok_r(NULL, " ", &next_token);
-        if (part != NULL) {
+        if (part != NULL)
+        {
             strncpy(argument->token, part, sizeof(argument->token) - 1);
 
             // Procesar el nombre del comando
             part = strtok_r(NULL, "|", &next_token);
-            if (part != NULL) {
+            if (part != NULL)
+            {
                 strncpy(argument->name, part, sizeof(argument->name) - 1);
 
                 // Procesar la clave y el valor
                 part = strtok_r(NULL, ":", &next_token);
-                if (part != NULL) {
+                if (part != NULL)
+                {
                     strncpy(argument->key, part, sizeof(argument->key) - 1);
 
                     // El valor es lo que queda después de la clave
                     part = strtok_r(NULL, "", &next_token);
-                    if (part != NULL) {
+                    if (part != NULL)
+                    {
                         strncpy(argument->value, part, sizeof(argument->value) - 1);
                     }
                 }
@@ -271,10 +266,7 @@ static struct argument* parse_request(char *buffer, ssize_t numBytesRcvd) {
 // Selector_key hace referencia directamente al del servidor UDP. no hay conexión.
 void receive_managment_message(struct selector_key *key)
 {
-    // Alias
-    struct args* global_args = args;
-
-    struct sockaddr_storage clntAddr; 			// Client address
+    struct sockaddr_storage clntAddr; // Client address
     // Set Length of client address structure (in-out parameter)
     socklen_t clntAddrLen = sizeof(clntAddr);
 
@@ -282,24 +274,24 @@ void receive_managment_message(struct selector_key *key)
     char write_buffer[CLIENT_BUFFER_SIZE] = {0};
 
     errno = 0;
-    ssize_t numBytesRcvd = recvfrom(key->fd, read_buffer, CLIENT_BUFFER_SIZE, 0, (struct sockaddr *) &clntAddr, &clntAddrLen);
+    ssize_t numBytesRcvd = recvfrom(key->fd, read_buffer, CLIENT_BUFFER_SIZE, 0, (struct sockaddr *)&clntAddr, &clntAddrLen);
     logf(LOG_DEBUG, "Received: %s", read_buffer);
-    if (numBytesRcvd < 0) {
-        logf(LOG_ERROR, "recvfrom() failed: %s ", strerror(errno))
-        return;
+    if (numBytesRcvd < 0)
+    {
+        logf(LOG_ERROR, "recvfrom() failed: %s ", strerror(errno)) return;
     }
 
     log(LOG_INFO, "Received message from client");
-    struct argument* arg = parse_request(read_buffer, numBytesRcvd);
+    struct argument *arg = parse_request(read_buffer, numBytesRcvd);
 
-    if (strcmp(global_args->token, arg->token) != 0)
+    if (strcmp(args->token, arg->token) != 0)
     {
-        strcpy(write_buffer, "-ERR. Invalid token ");
+        strncpy(write_buffer, "-ERR. Invalid token ", 24);
         goto send;
     }
 
-
-    for (int i = 0; i < MAX_ARGUMENTS; i++) {
+    for (int i = 0; i < MAX_ARGUMENTS; i++)
+    {
         if (strcmp(arg->name, commands[i].name) == 0)
         {
             logf(LOG_DEBUG, "Executing command %s", commands[i].name);
@@ -309,6 +301,6 @@ void receive_managment_message(struct selector_key *key)
     }
 
 send:
-    sendto(key->fd, write_buffer, strlen(write_buffer), 0, (struct sockaddr *) &clntAddr, clntAddrLen);
-    
+    sendto(key->fd, write_buffer, strlen(write_buffer), 0, (struct sockaddr *)&clntAddr, clntAddrLen);
+    free(arg);
 }
