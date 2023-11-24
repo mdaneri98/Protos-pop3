@@ -1,23 +1,31 @@
-POP3 Server v1.0
-ITBA - 72.07 Protocolos de Comunicación 20232Q
+# POP3 Server v1.0 ITBA - 72.07 Protocolos de Comunicación 20232Q
 
-Juan Segundo Arnaude        62184       jarnaude@itba.edu.ar
-Matias Wodtke               62098       mwodtke@itba.edu.ar
-Matias Ezequiel Daneri      60798       mdaneri@itba.edu.ar
-Bautista Canevaro           62179       bcanevaro@itba.edu.ar
+---
 
-Compilación y creación de los ejecutables
+| Alumno | Legajo | Mail |
+| --- | --- | --- |
+| Arnaude, Juan Segundo | 62184 | jarnaude@itba.edu.ar |
+| Canevaro, Bautista | 62179 | bcanevaro@itba.edu.ar |
+| Daneri, Matías Ezequiel | 60798 | mdaneri@itba.edu.ar |
+| Wodtke, Matías | 62098 | mwodtke@itba.edu.ar |
+
+---
+## Compilación y creación de los ejecutables
 
 Para comenzar con la compilación, este proyecto cuenta con un Makefile que facilita este proceso. Para ello, entrar al directorio raíz y ejecutar los siguientes comando. El primero para limpiar los archivos residuales y el segundo para generar los ejecutables necesarios.
 
+```bash
 $$ make clean
 $$ make all
+```
 
+## Uso del directorio de mails
 
-Uso del directorio de mails
+Para poder utilizar correctamente el servidor POP3, se requiere contar con un directorio llamado `Maildir` que contenga todos los correos de los usuarios del sistema. A su vez, dentro de cada una de las carpetas de los usuarios, se debe agregar una carpeta llamada `cur` que incluirá los correos, cada uno en archivos separados.
 
-Para poder utilizar correctamente el servidor POP3, se requiere contar con un directorio llamado Maildir que contenga todos los correos de los usuarios del sistema. A su vez, dentro de cada una de las carpetas de los usuarios, se debe agregar una carpeta llamada cur que incluirá los correos, cada uno en archivos separados.
+A continuación, se adjunta un esquema que ilustra los descripto previamente.
 
+```bash
 Maildir
 └── someuser
     ├── cur
@@ -25,78 +33,90 @@ Maildir
     │   └── 1700513186.V802I61e75M344960.debian_2,
     ├── new
     └── tmp
+```
 
+A continuacion se presenta un ejemplo de uso:
 
-Ejecución de las aplicacion servidor 
+```bash
+$$ ./pop3d -u mdaneri:pass123 -u someone:pass321 -d mails -v -t 123456
+```
 
-Se debe iniciar el programa servidor, `pop3d`. 
+Para conectarnos al servidor pop3d y utilizarlo.
 
+```bash
+$$ nc -C localhost [SERVER_PORT]
+
+```
+
+La flag `-C` es esencial para el funcionamiento ya que envía el ASCII '\r' antes de enviar '\n'.
+
+---
+
+## Ejecución de la aplicación servidor
+
+Antes que nada se debe iniciar el programa servidor, `pop3d`.
+
+```bash
 $$ ./pop3d [ARGUMENTS] -t [TOKEN]
-
+```
 Los argumentos aceptados son los siguientes:
-        
+
+```bash
 --help
 -h                               This help message.
 --directory <maildir>
--d <maildir>                     Path to directory where it'll find all users with their mails. 
+-d <maildir>                     Path to directory where it'll find all users with their mails. (Optional)
 --pop3-server-port <pop3 server port>
--p <pop3 server port>            Port for POP3 server connections.
+-p <pop3 server port>            Port for POP3 server connections.(Optional)
 --config-server-port <configuration server port>
--P <configuration server port>   Port for configuration client connections.
+-P <configuration server port>   Port for configuration client connections.(Optional)
 --user <user>:<password>
--u <user>:<password>             User and password for a user which can use the POP3 server. Up to 10.
+-u <user>:<password>             User and password for a user which can use the POP3 server. Up to 10.(Optional)
 --token <token>
 -t <token>                       Authentication token for the client. 
 --version
--v                               Prints version information.
+-v                               Prints version information.(Optional)
+```
 
--t o --token es el unico argumento requerido.
-El puerto default del servidor es: 1110.
+`-t` o `--token` es el único argumento requerido. El puerto default del servidor es: `1110`.
 
-Ejemplo de uso:
+Ejemplo de uso del servidor.
 
+```bash
 $$ ./pop3d -u mdaneri:pass123 -u someone:pass321 -d mails -v -t 123456
+```
 
-Ejecución del cliente
+---
 
-Una vez el prorama servidor este en ejecuccion se corre el siguiente programa, se corre el siguiente comando:
+## Ejecución del cliente
 
+Una vez el programa servidor esté en ejecución, se corre el siguiente comando.
+```bash
 $$ ./client -t [TOKEN] [ARGUMENTS]
+```
+Los argumentos aceptados son los siguientes.
+```bash
+token [token_value] help|not-given:not-given
+token [token_value] add-user|[username]:[password]
+token [token_value] change-pass|[username]:[new_password]
+token [token_value] change-maildir|[new_maildir]:not-given
+token [token_value] remove-user|[username]:not-given
+token [token_value] not-given|not-given:not-given
+token [token_value] version|not-given:not-given
+token [token_value] get-max-mails|not-given:not-given
+token [token_value] set-max-mails|[new_max_mails]:not-given
+token [token_value] stat-historic-connections|not-given:not-given
+token [token_value] stat-bytes-transferred|not-given:not-given
+```
 
-Los argumentos aceptados son los siguientes:
+`-t` o `--token` es el único argumento requerido.
 
---help
--h                               This help message.
---config-server-port <configuration server port>
--P <configuration server port>   Port for configuration client connections
---token <token>
--t <token>                       Authentication token for the client.
---version
--v                               Prints version information.
--add-user <user>:<password>
--u <user>:<password>             Add a user to the server.
---change-pass <user>:<password>
--p <user>:<password>             Change the password of a user.
---remove-user <user>
--r <user>                        Remove a user from the server.
---change-maildir <maildir>
--m <maildir>                     Change mail directory.
---get-max-mails 
--g                              Get the maximum number of mails.
---set-max-mails <number>
--s <number>               Set the maximum number of mails.
---stat-historic-connections
--i                       Get the number of historic connections.
---stat-current-connections
--c                       Get the number of current connections.
---stat-bytes-transferred
--b                       Get the number of bytes transferred.
+---
 
--t o --token es el unico argumento requerido.
+## Conexión al servidor pop3
 
-Conexion al servidor pop3d
-
+```bash
 $$ nc -C localhost [SERVER_PORT]
+```
 
-La flag -C es esencial para el funcionamiento ya que envia es ASCII '\r' antes de enviar '\n'.
-
+La flag `-C` es esencial para el funcionamiento ya que envia es ASCII '\r' antes de enviar '\n'.
