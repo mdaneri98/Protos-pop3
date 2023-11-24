@@ -34,8 +34,8 @@
 // FIXME: ! Cambiar antes de presentar el TP.
 #define LOGGER_LEVEL 0
 
-struct args* args;
-struct stats* stats;
+struct args *args;
+struct stats *stats;
 
 int done = false;
 
@@ -47,7 +47,7 @@ void sigterm_handler(const int signal)
 
 int set_up_managment_server()
 {
-    const char* err_msg = NULL;
+    const char *err_msg = NULL;
 
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
@@ -70,9 +70,9 @@ int set_up_managment_server()
         err_msg = "unable to bind socket";
         goto finally;
     }
-    
+
     return server;
-    
+
 finally:
     if (err_msg)
     {
@@ -85,7 +85,7 @@ finally:
     return -1;
 }
 
-int set_up_ipv4_server(int port, const char** err_msg)
+int set_up_ipv4_server(int port, const char **err_msg)
 {
     // Address para hacer el bind del socket.
     // Creamos para el servidor con IPv4 y IPv6, mismo puerto.
@@ -99,7 +99,7 @@ int set_up_ipv4_server(int port, const char** err_msg)
     const int server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (server < 0)
     {
-        *err_msg = "unable to create IPv4 socket";
+        *err_msg = "Unable to create IPv4 socket";
         return -1;
     }
 
@@ -108,7 +108,7 @@ int set_up_ipv4_server(int port, const char** err_msg)
 
     // man 7 ip. no importa reportar nada si falla.
     log(LOG_DEBUG, "Setting SO_REUSEADDR on IPv4 socket");
-    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));   // en caso de abortar, reusar direccion y puerto
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)); // en caso de abortar, reusar direccion y puerto
 
     // bind server sockets to port
     log(LOG_DEBUG, "Binding IPv4 socket");
@@ -144,7 +144,7 @@ int set_up_ipv4_server(int port, const char** err_msg)
     return server;
 }
 
-int set_up_ipv6_server(int port, const char** err_msg)
+int set_up_ipv6_server(int port, const char **err_msg)
 {
     struct sockaddr_in6 addr_6;
     memset(&addr_6, 0, sizeof(addr_6));
@@ -152,7 +152,6 @@ int set_up_ipv6_server(int port, const char** err_msg)
     addr_6.sin6_addr = in6addr_any;
     addr_6.sin6_port = htons(args->server_port);
 
-    
     const int server_6 = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
     if (server_6 < 0)
     {
@@ -263,7 +262,6 @@ int main(const int argc, char **argv)
         goto finally;
     }
 
-
     // Registramos el socket pasivo dentro del selector.
     // El selector se encargará de monitorear los eventos de este socket.
     const fd_handler server_handler = {
@@ -293,8 +291,7 @@ int main(const int argc, char **argv)
     };
 
     int client_socket = -1;
-    log(LOG_INFO, "Setting up managment server")
-    if ((client_socket = set_up_managment_server()) < 0)
+    log(LOG_INFO, "Setting up managment server") if ((client_socket = set_up_managment_server()) < 0)
     {
         err_msg = "unable to set up managment server";
         goto finally;
@@ -307,7 +304,7 @@ int main(const int argc, char **argv)
     }
 
     // ------------------ Loop select ------------------ //
-    for (; !done; )
+    for (; !done;)
     {
         ss = selector_select(selector);
         if (ss != SELECTOR_SUCCESS)
@@ -323,7 +320,8 @@ finally:
         logf(LOG_ERROR, "%s: %s", err_msg, strerror(errno));
         ret = 1;
     }
-    if(selector != NULL) { //si pudimos obtener el selector, lo liberamos
+    if (selector != NULL)
+    { // si pudimos obtener el selector, lo liberamos
         log(LOG_INFO, "Destroying selector");
         selector_destroy(selector);
     }

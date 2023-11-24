@@ -9,9 +9,8 @@
 #define SERVER_PORT 1110
 #define CLIENT_PORT 1120
 
-#define MAX_CONCURRENT_CONNECTIONS 1024
-#define MAX_QUEUED_CONNECTIONS 32
-#define BUFFER_SIZE 512
+#define MAX_CONCURRENT_CONNECTIONS 512
+#define BUFFER_SIZE 4096
 
 // LIST msj, donde msj puede tener hasta 40 bytes.
 #define COMMAND_QTY 12
