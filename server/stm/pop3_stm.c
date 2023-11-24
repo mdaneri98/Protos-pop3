@@ -36,7 +36,7 @@ size_t try_write(const char *str, buffer *buff)
 
 stm_states user_handler(struct selector_key *key, connection_data *conn)
 {
-    log(LOG_DEBUG, "FD %d: USER command");
+    logf(LOG_DEBUG, "FD %d: USER command", key->fd);
 
     struct users *users = args->users;
     size_t users_count = args->users_count;
@@ -510,7 +510,6 @@ void clean_command(connection_data *connection)
 stm_states read_command(struct selector_key *key, stm_states current_state)
 {
     struct connection_data *connection = (struct connection_data *)key->data;
-    logf(LOG_DEBUG, "ENTERED READ COMMAND %d", (int)connection->is_finished);
 
     char *ptr;
 
@@ -558,11 +557,8 @@ stm_states read_command(struct selector_key *key, stm_states current_state)
         /* event-type es modificado en pop3_parser.
             Una vez que se termina de parsear el comando, se setea el tipo de evento en VALID_COMMAND o INVALID_COMMAND.
         */
-        // logf(LOG_DEBUG, "FD %d: Current command: %s - Length: %d        Current arg: %s - Length: %d", key->fd, connection->current_command, (int)connection->command_length, connection->argument, (int)connection->argument_length);
-        // logf(LOG_DEBUG, " event = %d", event->type);
         if (event->type == VALID_COMMAND)
         {
-            logf(LOG_DEBUG, "FD %d: Valid command: %s", key->fd, connection->current_command);
             for (size_t j = 0; j < COMMAND_QTY; j++)
             {
                 struct command maybe_command = commands[j];
@@ -664,7 +660,6 @@ stm_states stm_authorization_read(struct selector_key *key)
 
 stm_states stm_authorization_write(struct selector_key *key)
 {
-    logf(LOG_DEBUG, "FD %d: stm_authorization_write", key->fd);
 
     connection_data *connection = (connection_data *)key->data;
 
@@ -710,7 +705,7 @@ void stm_transaction_arrival(stm_states state, struct selector_key *key)
             printf("Se caloqueo %d\n", (int)args->max_mails);
             connection->current_session.mails = calloc(args->max_mails, sizeof(struct mail));
         }
-        
+
         strcat(connection->current_session.mails[i].path, connection->current_session.maildir);
         strcat(connection->current_session.mails[i].path, "/");
         strcat(connection->current_session.mails[i].path, file->d_name);

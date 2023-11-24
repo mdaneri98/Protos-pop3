@@ -1,19 +1,16 @@
 #!/bin/bash
 
-# Specify the number of iterations
 iterations=1000
 
-# Function to clean up and close connections
 cleanup() {
-    echo "Closing connections..."
+    echo "Cerrando conexiones..."
     for pid in "${pids[@]}"; do
         kill -TERM "$pid" 2>/dev/null
     done
     wait
-    echo "Connections closed."
+    echo "Conexiones cerradas"
 }
 
-# Trap signals to ensure cleanup on exit
 trap 'cleanup; exit 1' INT TERM EXIT
 
 sleep_ms() {
@@ -21,10 +18,8 @@ sleep_ms() {
     sleep "$duration"
 }
 
-# Loop to run the script
 for ((i = 1; i <= iterations; i++)); do
-    # Run the script and store the PID
-    { printf "USER mdaneri\nPASS pass123\nLIST\n"; sleep 20; } | nc -C localhost 1110 >> test_concurrent_out.txt &
+    { printf "USER mdaneri\n"; sleep 10; printf "PASS pass123\n"; sleep 10; printf "LIST\n"; sleep 10;} | nc -C localhost 1110 >> test_concurrent_out.txt &
     pid=$!
     pids+=("$pid")
     printf "Connection $i created with pid: $pid\n"
