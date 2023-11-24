@@ -7,7 +7,7 @@
 #include "../lib/stm.h"
 
 #define SERVER_PORT 1110
-#define CLIENT_PORT 1120
+#define CLIENT_PORT 9090
 
 #define MAX_CONCURRENT_CONNECTIONS 512
 #define BUFFER_SIZE 4096
@@ -24,7 +24,6 @@
 #define USERNAME_SIZE 256
 #define PATH_SIZE 4096
 #define INITIAL_MAILS_QTY 64
-
 
 typedef enum
 {
@@ -43,7 +42,8 @@ typedef enum
     PARSER_STATES_COUNT
 } parser_states;
 
-typedef enum {
+typedef enum
+{
     ANY_CHARACTER,
     CR,
     LF,

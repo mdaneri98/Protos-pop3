@@ -19,11 +19,11 @@ sleep_ms() {
 }
 
 for ((i = 1; i <= iterations; i++)); do
-    { printf "USER mdaneri\n"; sleep 10; printf "PASS pass123\n"; sleep 10; printf "LIST\n"; sleep 10;} | nc -C localhost 1110 >> test_concurrent_out.txt &
+    { printf "USER\n"; sleep 10; printf "PASS pass123\n"; sleep 10; printf "LIST\n"; sleep 10;} | nc -C localhost 1110 >> test_concurrent_out.txt &
     pid=$!
     pids+=("$pid")
     printf "Connection $i created with pid: $pid\n"
-    sleep_ms 5
+    sleep_ms 10
 done
 
 # Wait for 20 seconds
