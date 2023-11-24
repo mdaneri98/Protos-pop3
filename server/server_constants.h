@@ -12,6 +12,8 @@
 #define MAX_CONCURRENT_CONNECTIONS 512
 #define BUFFER_SIZE 4096
 
+#define CLIENT_TOKEN_LENGTH 6
+
 // LIST msj, donde msj puede tener hasta 40 bytes.
 #define COMMAND_QTY 12
 #define COMMAND_LENGTH 4
@@ -23,10 +25,6 @@
 #define PATH_SIZE 4096
 #define INITIAL_MAILS_QTY 64
 
-#define CLIENT_HEADER_LENGTH 9
-#define CLIENT_ID_LENGTH 10
-
-#define CLIENT_TOKEN_LENGTH 6
 
 typedef enum
 {
@@ -93,7 +91,6 @@ typedef struct connection_data
     size_t command_length;
     size_t argument_length;
     bool is_finished;
-    bool command_error;
 
     struct parser *parser;
     struct state_machine stm;

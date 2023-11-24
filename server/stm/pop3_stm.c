@@ -53,7 +53,6 @@ stm_states user_handler(struct selector_key *key, connection_data *conn)
             char *msj = "+OK valid user\r\n";
             try_write(msj, &(conn->out_buff_object));
 
-            conn->command_error = false;
             return AUTHORIZATION;
         }
     }
@@ -62,8 +61,6 @@ stm_states user_handler(struct selector_key *key, connection_data *conn)
     char *msj = "-ERR invalid user\r\n";
     try_write(msj, &(conn->out_buff_object));
 
-    // Si el usuario no existe, seteamos el error en true.
-    conn->command_error = true;
     return AUTHORIZATION;
 }
 
@@ -76,7 +73,6 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
     {
         char *msj = "-ERR no username given\r\n";
         try_write(msj, &(conn->out_buff_object));
-        conn->command_error = true;
         return AUTHORIZATION;
     }
 
@@ -111,7 +107,6 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
         {
             logf(LOG_DEBUG, "FD %d: User %s doesn't have directory entry at %s and gone with error %s", key->fd, conn->user->name, conn->current_session.maildir, strerror(errno));
 
-            conn->command_error = true;
             conn->current_session.maildir[0] = '\0';
             conn->user->name[0] = '\0';
 
@@ -131,13 +126,11 @@ stm_states pass_handler(struct selector_key *key, connection_data *conn)
         char *msj = "+OK logged in\r\n";
         try_write(msj, &(conn->out_buff_object));
 
-        conn->command_error = false;
         return TRANSACTION;
     }
 
     char *msj = "-ERR invalid password\r\n";
     try_write(msj, &(conn->out_buff_object));
-    conn->command_error = true;
     logf(LOG_DEBUG, "FD %d: User %s password %s incorrect", key->fd, conn->user->name, conn->argument);
     return AUTHORIZATION;
 }
@@ -265,6 +258,7 @@ stm_states retr_handler(struct selector_key *key, connection_data *conn)
         try_write(end_msj, &(conn->out_buff_object));
         conn->is_finished = true;
         conn->current_session.mails[mail_number - 1].read_index = 0;
+        free(ptr);
         return TRANSACTION;
     }
     
